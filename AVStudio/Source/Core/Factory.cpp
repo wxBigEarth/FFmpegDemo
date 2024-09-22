@@ -269,8 +269,12 @@ namespace avstudio
 			
 			if (Frame)
 			{
-				Frame->duration = m_Output->VideoParts.Duration;
-				if (Frame->duration == 0) Frame->duration = n_Frame->duration;
+				if (!m_Output->VideoParts.Stream || 
+					m_Output->VideoParts.Duration == 0)
+					Frame->duration = n_Frame->duration;
+				else
+					Frame->duration = m_Output->VideoParts.Duration;
+
 				Frame->pts = m_Input->AdjustPts(Frame->duration, n_eMediaType) +
 					m_Output->GetLastPts(n_eMediaType);
 			}
