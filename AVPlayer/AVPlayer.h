@@ -4,7 +4,7 @@
 #include "ui_AVPlayer.h"
 #include "AVStudio.h"
 
-
+// Note: do not test while the avstudio is upgrade
 class AVPlayer : public QWidget, public avstudio::IIOHandle
 {
     Q_OBJECT
@@ -14,10 +14,7 @@ public:
     ~AVPlayer();
 
 	// Receive video/audio frames that have been decoded
-	int ReceiveData(const AVMediaType n_eMediaType,
-		avstudio::EDataType n_eType, void* n_Data) override;
-
-	size_t GetBufferSize(const AVMediaType n_eMediaType) const override;
+	int ReceiveData() override;
 
 	// Set file to play
 	void SetMediaFile(const std::string& n_sMediaFile);
@@ -32,9 +29,6 @@ protected:
 	virtual void VideoFrameArrived(const AVFrame* n_Frame);
 	// Get audio frame
 	virtual void AudioFrameArrived(const AVFrame* n_Frame);
-
-	void PlayVideo();
-	void PlayAudio();
 
 	// Update playing time stamp
 	// int n_nFree: bytes available in QAudioOutput buffer
@@ -74,10 +68,4 @@ private:
 	int			m_nFreeBytes = 0;
 	// How many bytes does a sample occupy
 	int			m_nBytesPerSample = 1;
-	
-	std::thread tVideo;
-	std::thread tAudio;
-
-	std::queue<AVFrame*> qVideo;
-	std::queue<AVFrame*> qAudio;
 };

@@ -34,41 +34,30 @@ AVPlayer::AVPlayer(QWidget *parent)
 
 AVPlayer::~AVPlayer()
 {
-	if (tVideo.joinable()) tVideo.join();
-	if (tAudio.joinable()) tAudio.join();
-
 	m_Editor.Stop();
 	m_Editor.Join();
 }
  
-int AVPlayer::ReceiveData(const AVMediaType n_eMediaType, 
-	avstudio::EDataType n_eType, void* n_Data)
+int AVPlayer::ReceiveData()
 {
-	if (n_Data) m_nStreamMark |= (1 << (int)n_eStreamType);
-	else m_nStreamMark &= ~(1 << (int)n_eStreamType);
+	FetchData(
+		[this](FDataItem* n_DataItem) {
 
-	if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_VIDEO)
-	{
-		qVideo.push((AVFrame*)n_Data);
-	}
-	else if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_AUDIO)
-	{
-		qAudio.push((AVFrame*)n_Data);
-	}
+			if (n_DataItem->DataType == EDataType::DT_Frame)
+			{
+				if (n_DataItem->MediaType == AVMediaType::AVMEDIA_TYPE_VIDEO)
+				{
+					VideoFrameArrived(n_DataItem->f());
+				}
+				else if (n_DataItem->MediaType == AVMediaType::AVMEDIA_TYPE_AUDIO)
+				{
+					AudioFrameArrived(n_DataItem->f());
+				}
+			}
+		}
+	);
 
 	return 0;
-}
-
-size_t AVPlayer::GetBufferSize(const AVMediaType n_eMediaType) const
-{
-	size_t nResult = 0;
-
-	if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_VIDEO)
-		nResult = qVideo.size();
-	else if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_AUDIO)
-		nResult = qAudio.size();
-
-	return nResult;
 }
 
 void AVPlayer::SetMediaFile(const std::string& n_sMediaFile)
@@ -141,21 +130,12 @@ void AVPlayer::Load()
 		m_Device = m_AudioOutput->start();
 	}
 
-	m_Editor.SetOutputIOHandle(this);
-
 	// for section select
 	Input->PickupFragment(5, 10);
 	m_Editor.SetMaxBufferSize(30);
 
 	m_nFreeBytes = knMaxBufferSize;
 	m_dTime = 0;
-
-	if (tVideo.joinable()) tVideo.join();
-	if (m_nSelectedStreams & 1)
-		tVideo = std::thread(std::bind(&AVPlayer::PlayVideo, this));
-	if (tAudio.joinable()) tAudio.join();
-	if (m_nSelectedStreams & 2)
-		tAudio = std::thread(std::bind(&AVPlayer::PlayAudio, this));
 }
 
 void AVPlayer::VideoFrameArrived(const AVFrame* n_Frame)
@@ -171,7 +151,7 @@ void AVPlayer::VideoFrameArrived(const AVFrame* n_Frame)
 		std::this_thread::sleep_for(std::chrono::milliseconds(kSleepDelay));
 	}
 
-	if ((m_nSelectedStreams & (1 << (int)EStreamType::ST_Audio)) == 0)
+	if ((m_nSelectedStreams & (1 << AVMediaType::AVMEDIA_TYPE_AUDIO) == 0)
 	{
 		// The audio stream is not exists
 		m_dTime = dTimestamp;
@@ -226,44 +206,6 @@ void AVPlayer::AudioFrameArrived(const AVFrame* n_Frame)
 
 			m_AudioOutput->stop();
 		}
-	}
-}
-
-void AVPlayer::PlayVideo()
-{
-	while (true)
-	{
-		if (qVideo.size() > 0)
-		{
-			auto f = qVideo.front();
-			qVideo.pop();
-
-			VideoFrameArrived(f);
-			if (!f) break;
-
-			av_frame_free(&f);
-		}
-		else
-			std::this_thread::sleep_for(std::chrono::milliseconds(kSleepDelay));
-	}
-}
-
-void AVPlayer::PlayAudio()
-{
-	while (true)
-	{
-		if (qAudio.size() > 0)
-		{
-			auto f = qAudio.front();
-			qAudio.pop();
-
-			AudioFrameArrived(f);
-			if (!f) break;
-
-			av_frame_free(&f);
-		}
-		else
-			std::this_thread::sleep_for(std::chrono::milliseconds(kSleepDelay));
 	}
 }
 
