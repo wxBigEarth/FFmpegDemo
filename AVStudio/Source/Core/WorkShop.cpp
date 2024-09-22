@@ -11,9 +11,17 @@ namespace avstudio
 		if (!n_Data) return Data;
 
 		if (n_eDataType == EDataType::DT_Frame)
-			Data = av_frame_clone((AVFrame*)n_Data);
+		{
+			AVFrame* Frame = av_frame_alloc();
+			av_frame_move_ref(Frame, (AVFrame*)n_Data);
+			Data = Frame;
+		}
 		else if (n_eDataType == EDataType::DT_Packet)
-			Data = av_packet_clone((AVPacket*)n_Data);
+		{
+			AVPacket* Packet = av_packet_alloc();
+			av_packet_move_ref(Packet, (AVPacket*)n_Data);
+			Data = Packet;
+		}
 
 		return Data;
 	}
@@ -76,7 +84,7 @@ namespace avstudio
 	{
 		VideoParts.Release();
 		AudioParts.Release();
-		m_vSectons.clear();
+		m_vFragments.clear();
 
 		m_nStreamMask = -1;
 		m_nGroupId = -1;
@@ -85,6 +93,12 @@ namespace avstudio
 
 		Fmt.Release();
 		IOHandle = nullptr;
+
+		if (InnerIOHandle)
+		{
+			delete InnerIOHandle;
+			InnerIOHandle = nullptr;
+		}
 	}
 
 	void FWorkShop::Processing()
@@ -102,7 +116,8 @@ namespace avstudio
 					VideoParts.Duration = (int64_t)(a);
 				}
 			}
-			else if (m_eCtxType == ECtxType::CT_Input)
+			else if (m_eCtxType == ECtxType::CT_Input &&
+				VideoParts.nStreamIndex >= 0)
 			{
 				ThrowExceptionExpr((IsValid() && !VideoParts.Stream) ||
 					!VideoParts.Codec ||
@@ -124,12 +139,23 @@ namespace avstudio
 					AudioParts.Duration = (int64_t)(a);
 				}
 			}
-			else if (m_eCtxType == ECtxType::CT_Input)
+			else if (m_eCtxType == ECtxType::CT_Input &&
+				AudioParts.nStreamIndex >= 0)
 			{
 				ThrowExceptionExpr((IsValid() && !AudioParts.Stream) ||
 					!AudioParts.Codec ||
 					!AudioParts.Codec->Context,
 					"Audio stream: not initialize complete\n");
+			}
+		}
+
+		if (m_eCtxType == ECtxType::CT_Output)
+		{
+			// Set io handle for output context
+			if (!IOHandle)
+			{
+				InnerIOHandle = new IIOHandle();
+				IOHandle = InnerIOHandle;
 			}
 		}
 	}
@@ -213,36 +239,22 @@ namespace avstudio
 			if (n_bSelect)
 			{
 				m_nStreamMask |= (1 << n_eMediaType);
-				if (!VideoParts.Buffer &&
-					m_eCtxType == ECtxType::CT_Output &&
-					IsValid())
-					VideoParts.Buffer = new Queue<void*>();
 			}
 			else
 			{
 				m_nStreamMask &= ~(1 << n_eMediaType);
-				VideoParts.ReleaseBuffer();
 			}
-
-			VideoParts.bIsEnd = !n_bSelect;
 		}
 		else if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_AUDIO)
 		{
 			if (n_bSelect)
 			{
 				m_nStreamMask |= (1 << n_eMediaType);
-				if (!AudioParts.Buffer &&
-					m_eCtxType == ECtxType::CT_Output &&
-					IsValid())
-					AudioParts.Buffer = new Queue<void*>();
 			}
 			else
 			{
 				m_nStreamMask &= ~(1 << n_eMediaType);
-				AudioParts.ReleaseBuffer();
 			}
-
-			AudioParts.bIsEnd = !n_bSelect;
 		}
 	}
 
@@ -253,14 +265,6 @@ namespace avstudio
 			return m_nStreamMask & (1 << n_eMediaType);
 
 		return false;
-	}
-
-	void FWorkShop::ResetEndFlag()
-	{
-		if (IsStreamSelected(AVMediaType::AVMEDIA_TYPE_VIDEO))
-			VideoParts.bIsEnd = false;
-		if (IsStreamSelected(AVMediaType::AVMEDIA_TYPE_AUDIO))
-			AudioParts.bIsEnd = false;
 	}
 
 	FCodecContext* FWorkShop::BuildCodecContext(AVStream* n_Stream)
@@ -601,7 +605,9 @@ namespace avstudio
 
 	void FWorkShop::CreateAudioFifo(FCodecContext* n_AudioCodec)
 	{
-		if (!AudioParts.Codec || !AudioParts.Codec->Context) return;
+		if (!AudioParts.Codec || 
+			!AudioParts.Codec->Context ||
+			!n_AudioCodec) return;
 
 		if (AudioParts.Codec->Context->frame_size != n_AudioCodec->Context->frame_size)
 		{
@@ -616,100 +622,21 @@ namespace avstudio
 
 	void FWorkShop::PushData(AVMediaType n_eMediaType, EDataType n_eDataType, void* n_Data)
 	{
-		if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_VIDEO)
+		if (m_eCtxType != ECtxType::CT_Output || !IOHandle) return;
+
+		void* Data = AVClone(n_eDataType, n_Data);
+		IOHandle->WriteData(n_eMediaType, n_eDataType, Data);
+
+		if (IsValid())
 		{
-			if (VideoParts.Buffer)
-			{
-				FDataItem* DataItem = new FDataItem();
-				DataItem->DataType = n_eDataType;
-				DataItem->MediaType = n_eMediaType;
-				DataItem->Data = AVClone(n_eDataType, n_Data);
+			IOHandle->FetchData(
+				[this](FDataItem* n_DataItem) {
 
-				VideoParts.Buffer->Push(DataItem);
-			}
-		}
-		else if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_AUDIO)
-		{
-			if (AudioParts.Buffer)
-			{
-				FDataItem* DataItem = new FDataItem();
-				DataItem->DataType = n_eDataType;
-				DataItem->MediaType = n_eMediaType;
-				DataItem->Data = AVClone(n_eDataType, n_Data);
-
-				AudioParts.Buffer->Push(DataItem);
-			}
-		}
-
-		if (IOHandle)
-		{
-			void* Data = AVClone(n_eDataType, n_Data);
-			IOHandle->WriteData(n_eMediaType, n_eDataType, Data);
-		}
-
-		GenerateFile();
-	}
-
-	int FWorkShop::PopData(AVMediaType n_eMediaType, FDataItem*& n_DataItem)
-	{
-		int ret = -1;
-		void* DataItem = nullptr;
-
-		if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_VIDEO)
-		{
-			if (VideoParts.Buffer && VideoParts.Buffer->Size() > 0)
-			{
-				ret = VideoParts.Buffer->Pop(DataItem, 10);
-				if (ret >= 0)
-				{
-					n_DataItem = (FDataItem*)DataItem;
+					if (n_DataItem->DataType == EDataType::DT_Packet)
+						Fmt.InterleavedWritePacket(n_DataItem->p());
 				}
-			}
+			);
 		}
-		else if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_AUDIO)
-		{
-			if (AudioParts.Buffer && AudioParts.Buffer->Size() > 0)
-			{
-				ret = AudioParts.Buffer->Pop(DataItem, 10);
-				if (ret >= 0)
-				{
-					n_DataItem = (FDataItem*)DataItem;
-				}
-			}
-		}
-
-		return ret;
-	}
-
-	int FWorkShop::FrontData(AVMediaType n_eMediaType, FDataItem*& n_DataItem)
-	{
-		int ret = -1;
-		void* DataItem = nullptr;
-
-		if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_VIDEO)
-		{
-			if (VideoParts.Buffer)
-			{
-				ret = VideoParts.Buffer->Front(DataItem);
-				if (ret >= 0)
-				{
-					n_DataItem = (FDataItem*)DataItem;
-				}
-			}
-		}
-		else if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_AUDIO)
-		{
-			if (AudioParts.Buffer)
-			{
-				ret = AudioParts.Buffer->Front(DataItem);
-				if (ret >= 0)
-				{
-					n_DataItem = (FDataItem*)DataItem;
-				}
-			}
-		}
-
-		return ret;
 	}
 
 	size_t FWorkShop::GetBufferSize(AVMediaType n_eMediaType)
@@ -720,8 +647,6 @@ namespace avstudio
 		{
 			if (!IsStreamSelected(n_eMediaType))
 				nResult = AV_TIME_BASE;
-			else if (VideoParts.Buffer)
-				nResult = VideoParts.Buffer->Size();
 			else if (IOHandle)
 				nResult = IOHandle->GetBufferSize(n_eMediaType);
 		}
@@ -729,95 +654,11 @@ namespace avstudio
 		{
 			if (!IsStreamSelected(n_eMediaType))
 				nResult = AV_TIME_BASE;
-			else if (AudioParts.Buffer)
-				nResult = AudioParts.Buffer->Size();
 			else if (IOHandle)
 				nResult = IOHandle->GetBufferSize(n_eMediaType);
 		}
 
 		return nResult;
-	}
-
-	void FWorkShop::GenerateFile()
-	{
-		if (m_eCtxType != ECtxType::CT_Output) return;
-
-		int vRet = 0;
-		int aRet = 0;
-
-		while ((VideoParts.Buffer && VideoParts.Buffer->Size() > 0) ||
-			(AudioParts.Buffer && AudioParts.Buffer->Size() > 0))
-		{
-			if (!VideoParts.bIsEnd && !m_vDataItem)
-			{
-				vRet = PopData(AVMediaType::AVMEDIA_TYPE_VIDEO, m_vDataItem);
-				if (vRet >= 0)
-				{
-					VideoParts.bIsEnd = !m_vDataItem ||
-						!m_vDataItem->Data ||
-						m_vDataItem->DataType != EDataType::DT_Packet;
-				}
-			}
-
-			if (!AudioParts.bIsEnd && !m_aDataItem)
-			{
-				aRet = PopData(AVMediaType::AVMEDIA_TYPE_AUDIO, m_aDataItem);
-				if (aRet >= 0)
-				{
-					AudioParts.bIsEnd = !m_aDataItem ||
-						!m_aDataItem->Data ||
-						m_aDataItem->DataType != EDataType::DT_Packet;
-				}
-			}
-
-			if (VideoParts.bIsEnd || AudioParts.bIsEnd)
-			{
-				if (VideoParts.bIsEnd)
-				{
-					AVFreeData(&m_vDataItem);
-					VideoParts.CleanBuffer();
-
-					if (!AudioParts.bIsEnd && m_aDataItem)
-					{
-						Fmt.InterleavedWritePacket(m_aDataItem->p());
-						AVFreeData(&m_aDataItem);
-					}
-				}
-				
-				if (AudioParts.bIsEnd)
-				{
-					AVFreeData(&m_aDataItem);
-					AudioParts.CleanBuffer();
-
-					if (!VideoParts.bIsEnd && m_vDataItem)
-					{
-						Fmt.InterleavedWritePacket(m_vDataItem->p());
-						AVFreeData(&m_vDataItem);
-					}
-				}
-			}
-			else if (m_vDataItem && m_aDataItem)
-			{
-				AVPacket* v = m_vDataItem->p();
-				AVPacket* a = m_aDataItem->p();
-
-				if (av_compare_ts(v->pts, v->time_base,
-					a->pts, a->time_base) < 0)
-				{
-					Fmt.InterleavedWritePacket(v);
-					AVFreeData(&m_vDataItem);
-				}
-				else
-				{
-					Fmt.InterleavedWritePacket(a);
-					AVFreeData(&m_aDataItem);
-				}
-			}
-			else
-			{
-				break;
-			}
-		}
 	}
 
 	int64_t FWorkShop::AdjustPts(int64_t n_nPts, AVMediaType n_eMediaType)
@@ -870,7 +711,7 @@ namespace avstudio
 	{
 		if (m_eCtxType != ECtxType::CT_Input) return;
 
-		FSection Section;
+		FFragment Section;
 		double dTo = n_dStart + n_dLength;
 
 		if (VideoParts.Stream)
@@ -885,34 +726,34 @@ namespace avstudio
 			Section.aTo = (int64_t)(dTo / av_q2d(AudioParts.Stream->time_base));
 		}
 
-		m_vSectons.emplace_back(Section);
+		m_vFragments.emplace_back(Section);
 	}
 
 	int64_t FWorkShop::TryPickup(int64_t n_nPts, AVMediaType n_eMediaType)
 	{
 		int64_t nResult = 0;
-		if (m_vSectons.size() > 0) nResult = -1;
+		if (m_vFragments.size() > 0) nResult = -1;
 
 		int64_t n = 0;
 
-		for (size_t i = 0; i < m_vSectons.size(); i++)
+		for (size_t i = 0; i < m_vFragments.size(); i++)
 		{
 			if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_VIDEO)
 			{
 				if (i == 0)
-					n = m_vSectons[i].vFrom;
+					n = m_vFragments[i].vFrom;
 				else
-					n += m_vSectons[i].vFrom - m_vSectons[i - 1].vFrom;
+					n += m_vFragments[i].vFrom - m_vFragments[i - 1].vFrom;
 
-				if (m_vSectons[i].vFrom <= n_nPts && 
-					m_vSectons[i].vTo > n_nPts)
+				if (m_vFragments[i].vFrom <= n_nPts && 
+					m_vFragments[i].vTo > n_nPts)
 				{
 					nResult = n;
 					break;
 				}
 
-				if (m_vSectons[i].vTo < n_nPts &&
-					i == m_vSectons.size() - 1)
+				if (m_vFragments[i].vTo < n_nPts &&
+					i == m_vFragments.size() - 1)
 				{
 					nResult = AVERROR_EOF;
 					break;
@@ -921,19 +762,19 @@ namespace avstudio
 			else if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_AUDIO)
 			{
 				if (i == 0)
-					n = m_vSectons[i].aFrom;
+					n = m_vFragments[i].aFrom;
 				else
-					n += m_vSectons[i].aFrom - m_vSectons[i - 1].aFrom;
+					n += m_vFragments[i].aFrom - m_vFragments[i - 1].aFrom;
 
-				if (m_vSectons[i].aFrom <= n_nPts && 
-					m_vSectons[i].aTo > n_nPts)
+				if (m_vFragments[i].aFrom <= n_nPts && 
+					m_vFragments[i].aTo > n_nPts)
 				{
 					nResult = n;
 					break;
 				}
 
-				if (m_vSectons[i].aTo < n_nPts &&
-					i == m_vSectons.size() - 1)
+				if (m_vFragments[i].aTo < n_nPts &&
+					i == m_vFragments.size() - 1)
 				{
 					nResult = AVERROR_EOF;
 					break;

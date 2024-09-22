@@ -61,8 +61,6 @@ namespace avstudio
 		void EnableStream(AVMediaType n_eMediaType, bool n_bSelect = true);
 		// Is stream [n_eMediaType] selected
 		bool IsStreamSelected(AVMediaType n_eMediaType) const;
-		// Reset end flag of output context
-		void ResetEndFlag();
 
 		// Build codec context for output context with stream of input context
 		FCodecContext* BuildCodecContext(AVStream* n_Stream);
@@ -102,16 +100,9 @@ namespace avstudio
 
 		// Push AVPacket/AVFrame into queue
 		void PushData(AVMediaType n_eMediaType, EDataType n_eDataType, void* n_Data);
-		// Pop AVPacket/AVFrame from queue
-		int PopData(AVMediaType n_eMediaType, FDataItem*& n_DataItem);
-		// Front Data in the queue
-		int FrontData(AVMediaType n_eMediaType, FDataItem*& n_DataItem);
 
 		// Number of data in the buffer
 		size_t GetBufferSize(AVMediaType n_eMediaType);
-
-		// For output context only, write data into output file
-		void GenerateFile();
 
 		// Adjust pts for AVFrame that decoded from input context
 		int64_t AdjustPts(int64_t n_nPts, AVMediaType n_eMediaType);
@@ -147,11 +138,11 @@ namespace avstudio
 		FLatheParts VideoParts;
 		// Information about audio stream
 		FLatheParts AudioParts;
-		// For data IO
+		// Data IO. Set by Caller, If not set, it will point to [InnerIOHandle]
 		IIOHandle*	IOHandle = nullptr;
 
 	protected:
-		struct FSection
+		struct FFragment
 		{
 			// Video Section
 			int64_t vFrom = 0;
@@ -164,10 +155,8 @@ namespace avstudio
 
 	protected:
 		ECtxType	m_eCtxType = ECtxType::CT_Input;
-		// First data in the video queue
-		FDataItem*	m_vDataItem = nullptr;
-		// First data in the audio queue
-		FDataItem*	m_aDataItem = nullptr;
+		// Data IO. Allocate and free by AVStudio if Caller do not set IIOHandle
+		IIOHandle*	InnerIOHandle = nullptr;
 
 		// Selected streams
 		unsigned int m_nStreamMask = kALL_STREAM;
@@ -179,7 +168,7 @@ namespace avstudio
 		unsigned int m_nGroupIndex = 0;
 
 		// For input context only, used to split input context
-		std::vector<FSection> m_vSectons;
+		std::vector<FFragment> m_vFragments;
 
 		// Count of video AVFrame pts
 		int64_t		m_nVideoPts = 0;

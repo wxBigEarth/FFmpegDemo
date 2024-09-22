@@ -26,8 +26,10 @@ namespace avstudio
 	};
 
 	// Free AVPacket/AVFrame by DataType
-	void AVFreeData(FDataItem** n_DataItem);
+	void AVFreeDataPtr(FDataItem** n_DataItem);
 
+	// Free AVPacket/AVFrame by DataType
+	void AVFreeData(FDataItem* n_DataItem);
 }
 
 #endif // !__DATAITEM_H__

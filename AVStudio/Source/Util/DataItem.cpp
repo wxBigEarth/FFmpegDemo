@@ -1,4 +1,4 @@
-#include "Core/DataItem.h"
+#include "Util/DataItem.h"
 
 
 
@@ -14,32 +14,37 @@ namespace avstudio
 		return (AVFrame*)Data;
 	}
 
-	void AVFreeData(FDataItem** n_DataItem)
+	void AVFreeDataPtr(FDataItem** n_DataItem)
 	{
 		if (!n_DataItem || !(*n_DataItem)) return;
 
 		FDataItem* DataItem = *n_DataItem;
 
-		switch (DataItem->DataType)
+		AVFreeData(DataItem);
+
+		delete *n_DataItem;
+		*n_DataItem = nullptr;
+	}
+
+	void AVFreeData(FDataItem* n_DataItem)
+	{
+		switch (n_DataItem->DataType)
 		{
 		case EDataType::DT_None:
 			break;
 		case EDataType::DT_Packet:
 		{
-			if (DataItem->Data) av_packet_free((AVPacket**)&DataItem->Data);
+			if (n_DataItem->Data) av_packet_free((AVPacket**)&n_DataItem->Data);
 		}
 		break;
 		case EDataType::DT_Frame:
 		{
-			if (DataItem->Data) av_frame_free((AVFrame**)&DataItem->Data);
+			if (n_DataItem->Data) av_frame_free((AVFrame**)&n_DataItem->Data);
 		}
 		break;
 		default:
 			break;
 		}
-
-		delete *n_DataItem;
-		*n_DataItem = nullptr;
 	}
 
 }

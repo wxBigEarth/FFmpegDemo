@@ -41,7 +41,7 @@
 #include "IO/IOHandle.h"
 #include "IO/IOPcm.h"
 
-#include "Core/DataItem.h"
+#include "Util/DataItem.h"
 #include "Core/LatheParts.h"
 #include "Core/WorkShop.h"
 #include "Core/Factory.h"

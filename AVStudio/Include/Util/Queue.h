@@ -19,12 +19,12 @@ namespace avstudio
 			_empty_notify.notify_all();
 		}
 
-		int Pop(T& val, const int n_nTimeout) {
+		int Pop(T& val, const int timeout) {
 			std::unique_lock<std::mutex> lock(_mutex);
 
 			if (_queue.empty()) {
 				// _empty_notify.wait(_mutex, [this]() {return !this->_queue.empty(); });
-				if (_empty_notify.wait_for(_mutex, std::chrono::milliseconds(n_nTimeout), 
+				if (_empty_notify.wait_for(_mutex, std::chrono::milliseconds(timeout), 
 					[this]() {return this->_queue.empty(); }))
 					return -1;
 				return -1;

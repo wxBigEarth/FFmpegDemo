@@ -8,6 +8,21 @@ using namespace std;
 using namespace avstudio;
 
 
+class CIOHandle : public IIOHandle
+{
+public:
+	int ReceiveData() override
+	{
+		FetchData(
+			[this](FDataItem* n_DataItem) {
+				// do something with the data
+			}
+		);
+
+		return 0;
+	}
+};
+
 static void Cover()
 {
 	try
@@ -44,6 +59,11 @@ static void Cover()
 		//	}
 		//);
 
+		// Tip 3: Caller can set customize IOHandle like below
+		// 
+		// CIOHandle ioHandle;
+		// Output->IOHandle = &ioHandle;
+
 		// =======================================================================
 
 		// Or caller can create codec and stream like below
@@ -63,10 +83,13 @@ static void Cover()
 		// 	Input->VideoParts.Codec->Context);
 
 		// 3. Set codec parameter manual
-		//vctx->m_Context->framerate = Input->VideoInfo.Stream->r_frame_rate;
-		//vctx->m_Context->gop_size = 0;
+		//vctx->Context->framerate = Input->VideoParts.Stream->r_frame_rate;
+		//vctx->Context->gop_size = 0;
 
-		// 4. Create stream
+		// 4 Open codec context
+		// Output->OpenCodecContext(AVMediaType::AVMEDIA_TYPE_VIDEO);
+
+		// 5. Create stream
 		// Output->BuildStream(vctx->Context, AVMediaType::AVMEDIA_TYPE_VIDEO);
 
 		// 1. Enable audio stream

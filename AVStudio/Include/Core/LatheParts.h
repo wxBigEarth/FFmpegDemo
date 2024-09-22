@@ -6,7 +6,7 @@
 #include "Apis/SwsScale.h"
 #include "Filter/Filter.h"
 #include "Util/Queue.h"
-#include "Core/DataItem.h"
+#include "Util/DataItem.h"
 
 
 namespace avstudio
@@ -17,9 +17,6 @@ namespace avstudio
 		int				nShouldDecode = 0;
 		// Index of video stream, -1: invalid
 		int				nStreamIndex = -1;
-		// For output context, means weather current input context is done
-		// For input context, not use
-		bool			bIsEnd = true;
 
 		/*
 		* For output context only
@@ -29,11 +26,8 @@ namespace avstudio
 		*/
 		AVCodecID		DesireCodecId = AVCodecID::AV_CODEC_ID_NONE;
 
-		// Frame duration, for output context only
+		// For output context only, Frame duration
 		int64_t			Duration = 1;
-		// For output context only, if output context is valid, 
-		// it will be initialize
-		Queue<void*>*	Buffer = nullptr;
 
 		AVStream*		Stream = nullptr;
 		// Video codec
@@ -45,8 +39,6 @@ namespace avstudio
 		FAudioFifo*		FiFo = nullptr;
 
 		void Release();
-		void CleanBuffer();
-		void ReleaseBuffer();
 
 		AVCodecID CodecID() const;
 	};

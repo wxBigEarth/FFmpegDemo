@@ -393,7 +393,6 @@ namespace avstudio
 				}
 
 				AddLastPts(Factory->Input()->Fmt.Length());
-				m_OutputFile.ResetEndFlag();
 			}
 
 			Factory->Release();
@@ -460,7 +459,6 @@ namespace avstudio
 		if (!IsStop())
 		{
 			AddLastPts(dLength);
-			m_OutputFile.ResetEndFlag();
 		}
 	}
 

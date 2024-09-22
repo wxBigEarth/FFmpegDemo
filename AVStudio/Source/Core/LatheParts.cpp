@@ -10,7 +10,6 @@ namespace avstudio
 		nStreamIndex = -1;
 		Duration = 0;
 
-		bIsEnd = true;
 		Stream = nullptr;
 		Filter = nullptr;
 
@@ -38,29 +37,6 @@ namespace avstudio
 		{
 			delete FiFo;
 			FiFo = nullptr;
-		}
-
-		ReleaseBuffer();
-	}
-
-	void FLatheParts::CleanBuffer()
-	{
-		if (!Buffer) return;
-		Buffer->Clear(
-			[this](void* n_Data) {
-				auto DataItem = (FDataItem*)n_Data;
-				AVFreeData(&DataItem);
-			}
-		);
-	}
-
-	void FLatheParts::ReleaseBuffer()
-	{
-		CleanBuffer();
-		if (Buffer)
-		{
-			delete Buffer;
-			Buffer = nullptr;
 		}
 	}
 
