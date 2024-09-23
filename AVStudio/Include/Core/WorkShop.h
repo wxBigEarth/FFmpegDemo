@@ -101,6 +101,9 @@ namespace avstudio
 		// Push AVPacket/AVFrame into queue
 		void PushData(AVMediaType n_eMediaType, EDataType n_eDataType, void* n_Data);
 
+		// If output context is valid, write AVPacket into output file
+		void WriteIntoFile(FDataItem* n_DataItem);
+
 		// Number of data in the buffer
 		size_t GetBufferSize(AVMediaType n_eMediaType);
 

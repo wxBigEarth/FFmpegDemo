@@ -151,11 +151,14 @@ namespace avstudio
 
 		if (m_eCtxType == ECtxType::CT_Output)
 		{
-			// Set io handle for output context
+			// Set IO handle for output context
 			if (!IOHandle)
 			{
 				InnerIOHandle = new IIOHandle();
 				IOHandle = InnerIOHandle;
+
+				IOHandle->SetupCallback(
+					std::bind(&FWorkShop::WriteIntoFile, this, std::placeholders::_1));
 			}
 		}
 	}
@@ -626,17 +629,15 @@ namespace avstudio
 
 		void* Data = AVClone(n_eDataType, n_Data);
 		IOHandle->WriteData(n_eMediaType, n_eDataType, Data);
+		IOHandle->AVSync();
+	}
 
-		if (IsValid())
-		{
-			IOHandle->FetchData(
-				[this](FDataItem* n_DataItem) {
+	void FWorkShop::WriteIntoFile(FDataItem* n_DataItem)
+	{
+		if (!IsValid()) return;
 
-					if (n_DataItem->DataType == EDataType::DT_Packet)
-						Fmt.InterleavedWritePacket(n_DataItem->p());
-				}
-			);
-		}
+		if (n_DataItem->DataType == EDataType::DT_Packet)
+			Fmt.InterleavedWritePacket(n_DataItem->p());
 	}
 
 	size_t FWorkShop::GetBufferSize(AVMediaType n_eMediaType)

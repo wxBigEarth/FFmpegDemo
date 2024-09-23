@@ -30,30 +30,36 @@ namespace avstudio
 			EDataType n_eDataType, void* n_Data);
 
 		// When writing data, it will call this function
-		virtual int ReceiveData();
+		virtual int ReceiveData(const AVMediaType n_eMediaType);
 
-		virtual size_t GetBufferSize(const AVMediaType n_eMediaType);
+		size_t GetBufferSize(const AVMediaType n_eMediaType);
 
-		// Getting data from the buffer list
-		// Return value: is fetching over
-		bool FetchData(std::function<void(FDataItem*)> n_func);
+		// Getting data from the buffer list, the audio and video is
+		// Synchronized, and it will call [m_func] to do with the data
+		// AVStudio calls it to generate output file
+		void AVSync();
 
-		// Does get last data of Video/Audio stream
-		bool IsOver();
-
-	protected:
+		// Pop data from queue, The return value should be free by AVFreeDataPtr()
+		FDataItem* PopData(const AVMediaType n_eMediaType);
 		/*
 		* Check is stream n_eMediaType end
 		* return value:
 		*	0: waiting for more data
 		*	1: contains data
-		*	AVERROR__EOF: is end now
+		*	AVERROR_EOF: is end now
 		*/
 		int IsEnd(const AVMediaType n_eMediaType);
+
+		// Set callback function to do with the data
+		void SetupCallback(std::function<void(FDataItem*)> n_func);
+
+	protected:
+		// Pop data item and do with callback [n_func]
+		// If [n_func] is nullptr, just pop data
 		void ApplyData(const AVMediaType n_eMediaType,
 			std::function<void(FDataItem*)> n_func);
 
-	protected:
+	private:
 		// Video list
 		std::list<FDataItem*> m_lstVideo;
 		std::list<FDataItem*>::iterator m_itrVideo;
@@ -62,6 +68,9 @@ namespace avstudio
 		std::list<FDataItem*>::iterator m_itrAudio;
 
 		std::mutex	_mutex;
+
+		// Callback when read data
+		std::function<void(FDataItem*)> m_func = nullptr;
 	};
 }
 

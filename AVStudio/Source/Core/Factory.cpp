@@ -17,8 +17,6 @@ namespace avstudio
 		m_Input = n_Input;
 		m_Output = n_Output;
 
-		//ShouldBeDecoded();
-
 		return 0;
 	}
 
@@ -40,13 +38,6 @@ namespace avstudio
 
 	int CFactory::WindUp()
 	{
-		//if (m_Input->VideoInfo.Stream)
-		//{
-		//	auto Length = m_Input->Fmt.Length();
-		//	auto nPts = Length /
-		//		av_q2d(m_Input->VideoInfo.Stream->time_base);
-		//}
-
 		return 0;
 	}
 
@@ -230,6 +221,8 @@ namespace avstudio
 						iLatheParts->Codec->Context->codec_id == AVCodecID::AV_CODEC_ID_MP3 &&
 						n_Frame->nb_samples < iLatheParts->Codec->Context->frame_size)
 						return 0;
+
+					n_Frame->time_base = iLatheParts->Codec->Context->time_base;
 				}
 
 				return Converting(n_Frame, n_eMediaType);
@@ -414,11 +407,8 @@ namespace avstudio
 
 				if (n_Packet)
 				{
-					AVRational from = { 0, 0 };
-					AVRational to = { 0, 0 };
-
-					from = oLatheParts->Codec->Context->time_base;
-					to = oLatheParts->Stream->time_base;
+					auto from = oLatheParts->Codec->Context->time_base;
+					auto to = oLatheParts->Stream->time_base;
 
 					int cmp = av_cmp_q(from, to);
 					if (cmp != 0 && cmp != INT_MIN)

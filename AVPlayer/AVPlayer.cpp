@@ -34,30 +34,10 @@ AVPlayer::AVPlayer(QWidget *parent)
 
 AVPlayer::~AVPlayer()
 {
+	JoinThread();
+
 	m_Editor.Stop();
 	m_Editor.Join();
-}
- 
-int AVPlayer::ReceiveData()
-{
-	FetchData(
-		[this](FDataItem* n_DataItem) {
-
-			if (n_DataItem->DataType == EDataType::DT_Frame)
-			{
-				if (n_DataItem->MediaType == AVMediaType::AVMEDIA_TYPE_VIDEO)
-				{
-					VideoFrameArrived(n_DataItem->f());
-				}
-				else if (n_DataItem->MediaType == AVMediaType::AVMEDIA_TYPE_AUDIO)
-				{
-					AudioFrameArrived(n_DataItem->f());
-				}
-			}
-		}
-	);
-
-	return 0;
 }
 
 void AVPlayer::SetMediaFile(const std::string& n_sMediaFile)
@@ -79,6 +59,7 @@ void AVPlayer::Load()
 
 	Output->IOHandle = this;
 	m_nSelectedStreams = 0;
+	m_nStreamMark = 0;
 
 	if (vCodec && vCodec->Context)
 	{
@@ -102,6 +83,7 @@ void AVPlayer::Load()
 		if (actx->Context)
 			actx->Context->sample_fmt = AVSampleFormat::AV_SAMPLE_FMT_S16;
 
+		aoCodec = actx->Context;
 		m_nSelectedStreams |= 2;
 	}
 
@@ -131,11 +113,17 @@ void AVPlayer::Load()
 	}
 
 	// for section select
-	Input->PickupFragment(5, 10);
+	//Input->PickupFragment(5, 10);
 	m_Editor.SetMaxBufferSize(30);
 
 	m_nFreeBytes = knMaxBufferSize;
 	m_dTime = 0;
+
+	JoinThread();
+	if (m_nSelectedStreams & 1)
+		tVideo = std::thread(std::bind(&AVPlayer::PlayVideo, this));
+	if (m_nSelectedStreams & 2)
+		tAudio = std::thread(std::bind(&AVPlayer::PlayAudio, this));
 }
 
 void AVPlayer::VideoFrameArrived(const AVFrame* n_Frame)
@@ -144,12 +132,6 @@ void AVPlayer::VideoFrameArrived(const AVFrame* n_Frame)
 
 	double dTimestamp = n_Frame->pts * av_q2d(n_Frame->time_base);
 	int offset = (dTimestamp - m_dTime) * 1000 * 1000;
-
-	while (m_dTime == 0 && m_nStreamMark != m_nSelectedStreams)
-	{
-		// Wait audio stream coming
-		std::this_thread::sleep_for(std::chrono::milliseconds(kSleepDelay));
-	}
 
 	if ((m_nSelectedStreams & (1 << AVMediaType::AVMEDIA_TYPE_AUDIO) == 0)
 	{
@@ -179,12 +161,6 @@ void AVPlayer::AudioFrameArrived(const AVFrame* n_Frame)
 
 		if (n_Frame)
 		{
-			while (m_dTime == 0 && m_nStreamMark != m_nSelectedStreams)
-			{
-				// Wait video stream coming
-				std::this_thread::sleep_for(std::chrono::milliseconds(kSleepDelay));
-			}
-
 			while (nFree < n_Frame->nb_samples * m_nBytesPerSample)
 			{
 				nFree = m_AudioOutput->bytesFree();
@@ -198,7 +174,7 @@ void AVPlayer::AudioFrameArrived(const AVFrame* n_Frame)
 		}
 		else
 		{
-			int nSamples = (knMaxBufferSize - n_nFree) / m_nBytesPerSample;
+			int nSamples = (knMaxBufferSize - m_nFreeBytes) / m_nBytesPerSample;
 			double dTime = nSamples * m_dDurionPerSample;
 			
 			std::this_thread::sleep_for(std::chrono::milliseconds(int(dTime * 1000)));
@@ -213,6 +189,56 @@ void AVPlayer::UpdateTime(int n_nFree)
 {
 	int nSamplesCost = (n_nFree - m_nFreeBytes) / m_nBytesPerSample;
 	m_dTime += nSamplesCost * m_dDurionPerSample;
+}
+
+void AVPlayer::PlayVideo()
+{
+	// wait for data coming
+	while (IsEnd(AVMediaType::AVMEDIA_TYPE_VIDEO) == AVERROR_EOF)
+		std::this_thread::sleep_for(std::chrono::milliseconds(kSleepDelay));
+
+	m_nStreamMark |= 1;
+
+	// video and audio sync
+	while (m_nStreamMark != m_nSelectedStreams)
+		std::this_thread::sleep_for(std::chrono::milliseconds(kSleepDelay));
+
+	while (true)
+	{
+		auto item = PopData(AVMediaType::AVMEDIA_TYPE_VIDEO);
+		if (!item) break;
+
+		VideoFrameArrived(item->f());
+		AVFreeDataPtr(&item);
+	}
+}
+
+void AVPlayer::PlayAudio()
+{
+	// wait for data coming
+	while (IsEnd(AVMediaType::AVMEDIA_TYPE_AUDIO) == AVERROR_EOF)
+		std::this_thread::sleep_for(std::chrono::milliseconds(kSleepDelay));
+
+	m_nStreamMark |= 1;
+
+	// video and audio sync
+	while (m_nStreamMark != m_nSelectedStreams)
+		std::this_thread::sleep_for(std::chrono::milliseconds(kSleepDelay));
+
+	while (true)
+	{
+		auto item = PopData(AVMediaType::AVMEDIA_TYPE_AUDIO);
+		if (!item) break;
+
+		AudioFrameArrived(item->f());
+		AVFreeDataPtr(&item);
+	}
+}
+
+void AVPlayer::JoinThread()
+{
+	if (tVideo.joinable()) tVideo.join();
+	if (tAudio.joinable()) tVideo.tAudio();
 }
 
 void AVPlayer::OnPlayClicked()
@@ -242,6 +268,6 @@ void AVPlayer::slotVideoArrived(const QPixmap n_Pixmap)
 {
 	if (!n_Pixmap.isNull() && m_View)
 	{
-		m_View->setPixmap(Pixmap);
+		m_View->setPixmap(n_Pixmap);
 	}
 }

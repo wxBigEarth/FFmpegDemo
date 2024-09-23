@@ -11,13 +11,9 @@ using namespace avstudio;
 class CIOHandle : public IIOHandle
 {
 public:
-	int ReceiveData() override
+	int ReceiveData(const AVMediaType n_eMediaType) override
 	{
-		FetchData(
-			[this](FDataItem* n_DataItem) {
-				// do something with the data
-			}
-		);
+		AVSync();
 
 		return 0;
 	}
@@ -63,6 +59,12 @@ static void Cover()
 		// 
 		// CIOHandle ioHandle;
 		// Output->IOHandle = &ioHandle;
+		// ioHandle.SetupCallback(
+		//	 [](FDataItem* n_DataItem)
+		//	 {
+		//		 // do something. Eg: get PCM data
+		//	 }
+		// );
 
 		// =======================================================================
 
@@ -423,7 +425,7 @@ int main()
 	auto start = std::chrono::steady_clock::now();
 	//SetupEditorLog();
 
-	//Cover();
+	Cover();
 	//Merge();
 	//DetachAudioStream();
 	//MixAudio();

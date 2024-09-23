@@ -21,51 +21,51 @@ namespace avstudio
 
 	void IIOHandle::Release()
 	{
-		while (m_itrVideo != m_lstVideo.end())
+		auto vItr = m_lstVideo.begin();
+		while (vItr != m_lstVideo.end())
 		{
-			AVFreeDataPtr(&(*m_itrVideo));
-
-			m_lstVideo.erase(m_itrVideo);
-			m_itrVideo = m_lstVideo.begin();
+			AVFreeDataPtr(&(*vItr));
+			m_lstVideo.erase(vItr++);
 		}
 
-		while (m_itrAudio != m_lstAudio.end())
+		auto aItr = m_lstAudio.begin();
+		while (aItr != m_lstAudio.end())
 		{
-			AVFreeDataPtr(&(*m_itrAudio));
-
-			m_lstAudio.erase(m_itrAudio);
-			m_itrAudio = m_lstAudio.begin();
+			AVFreeDataPtr(&(*aItr));
+			m_lstAudio.erase(aItr++);
 		}
 	}
 
 	int IIOHandle::WriteData(const AVMediaType n_eMediaType,
 		EDataType n_eDataType, void* n_Data)
 	{
-		std::unique_lock<std::mutex> lock(_mutex);
-
-		if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_VIDEO)
 		{
-			FDataItem* DataItem = new FDataItem();
-			DataItem->DataType = n_eDataType;
-			DataItem->MediaType = n_eMediaType;
-			DataItem->Data = n_Data;
+			std::unique_lock<std::mutex> lock(_mutex);
 
-			m_lstVideo.push_back(DataItem);
+			if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_VIDEO)
+			{
+				FDataItem* DataItem = new FDataItem();
+				DataItem->DataType = n_eDataType;
+				DataItem->MediaType = n_eMediaType;
+				DataItem->Data = n_Data;
+
+				m_lstVideo.push_back(DataItem);
+			}
+			else if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_AUDIO)
+			{
+				FDataItem* DataItem = new FDataItem();
+				DataItem->DataType = n_eDataType;
+				DataItem->MediaType = n_eMediaType;
+				DataItem->Data = n_Data;
+
+				m_lstAudio.push_back(DataItem);
+			}
 		}
-		else if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_AUDIO)
-		{
-			FDataItem* DataItem = new FDataItem();
-			DataItem->DataType = n_eDataType;
-			DataItem->MediaType = n_eMediaType;
-			DataItem->Data = n_Data;
 
-			m_lstAudio.push_back(DataItem);
-		}
-
-		return ReceiveData();
+		return ReceiveData(n_eMediaType);
 	}
 
-	int IIOHandle::ReceiveData()
+	int IIOHandle::ReceiveData(const AVMediaType n_eMediaType)
 	{
 		return 0;
 	}
@@ -84,7 +84,7 @@ namespace avstudio
 		return nResult;
 	}
 
-	bool IIOHandle::FetchData(std::function<void(FDataItem*)> n_func)
+	void IIOHandle::AVSync()
 	{
 		std::unique_lock<std::mutex> lock(_mutex);
 
@@ -98,7 +98,7 @@ namespace avstudio
 				while (m_itrAudio != m_lstAudio.end() && 
 					(*m_itrAudio)->Data)
 				{
-					ApplyData(AVMediaType::AVMEDIA_TYPE_AUDIO, n_func);
+					ApplyData(AVMediaType::AVMEDIA_TYPE_AUDIO, m_func);
 				}
 			}
 
@@ -107,7 +107,7 @@ namespace avstudio
 				while (m_itrVideo != m_lstVideo.end() &&
 					(*m_itrVideo)->Data)
 				{
-					ApplyData(AVMediaType::AVMEDIA_TYPE_VIDEO, n_func);
+					ApplyData(AVMediaType::AVMEDIA_TYPE_VIDEO, m_func);
 				}
 			}
 		}
@@ -124,25 +124,35 @@ namespace avstudio
 				if (av_compare_ts(v->pts, v->time_base,
 					a->pts, a->time_base) < 0)
 				{
-					ApplyData(AVMediaType::AVMEDIA_TYPE_VIDEO, n_func);
+					ApplyData(AVMediaType::AVMEDIA_TYPE_VIDEO, m_func);
 				}
 				else
 				{
-					ApplyData(AVMediaType::AVMEDIA_TYPE_AUDIO, n_func);
+					ApplyData(AVMediaType::AVMEDIA_TYPE_AUDIO, m_func);
 				}
 			}
-
 		}
-
-		return IsOver();
 	}
 
-	bool IIOHandle::IsOver()
+	FDataItem* IIOHandle::PopData(const AVMediaType n_eMediaType)
 	{
-		auto vEnd = IsEnd(AVMediaType::AVMEDIA_TYPE_VIDEO);
-		auto aEnd = IsEnd(AVMediaType::AVMEDIA_TYPE_AUDIO);
+		FDataItem* Result = nullptr;
 
-		return vEnd == AVERROR_EOF && aEnd == AVERROR_EOF;
+		if (IsEnd(n_eMediaType) == 1)
+		{
+			if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_VIDEO)
+			{
+				Result = *m_itrVideo;
+				m_lstVideo.erase(m_itrVideo++);
+			}
+			else if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_AUDIO)
+			{
+				Result = *m_itrAudio;
+				m_lstAudio.erase(m_itrAudio++);
+			}
+		}
+
+		return Result;
 	}
 
 	int IIOHandle::IsEnd(const AVMediaType n_eMediaType)
@@ -211,6 +221,11 @@ namespace avstudio
 		}
 
 		return nRet;
+	}
+
+	void IIOHandle::SetupCallback(std::function<void(FDataItem*)> n_func)
+	{
+		m_func = n_func;
 	}
 
 	void IIOHandle::ApplyData(const AVMediaType n_eMediaType,
