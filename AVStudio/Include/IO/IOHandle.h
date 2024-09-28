@@ -1,17 +1,7 @@
 #ifndef __IOHANDLE_H__
 #define __IOHANDLE_H__
-#include <list>
-#include <mutex>
 #include <functional>
-#include "Util/Common.h"
 #include "Util/DataItem.h"
-#ifdef __cplusplus
-extern "C" {
-#endif
-#include <libavutil/avutil.h>
-#ifdef __cplusplus
-};
-#endif
 
 
 namespace avstudio
@@ -19,55 +9,71 @@ namespace avstudio
 	class IIOHandle
 	{
 	public:
-		IIOHandle();
-		virtual ~IIOHandle();
+		~IIOHandle();
 
-		void Release();
+		/*
+		* Init handle
+		* unsigned int n_nMediaMask: Media mask, Indicate which stream is selected
+		*/
+		virtual void Init(unsigned int n_nMediaMask);
 
-		// Writes data into buffer list, and call function [ReceiveData] 
-		// to use the data
-		int WriteData(const AVMediaType n_eMediaType,
+		// Do something before start of each context group
+		virtual void Processing();
+
+		// Others write data in, and then do something with the data
+		// If [n_Data] is PCM data, n_nSize should be the length of data
+		virtual int WriteData(const AVMediaType n_eMediaType,
+			EDataType n_eDataType, void* n_Data, const int n_nSize = 0);
+
+		// Override this function to do with data
+		virtual int ReceiveData(const AVMediaType n_eMediaType,
 			EDataType n_eDataType, void* n_Data);
 
-		// When writing data, it will call this function
-		virtual int ReceiveData(const AVMediaType n_eMediaType);
+		// Get the size of buffer
+		virtual size_t GetBufferSize(const AVMediaType n_eMediaType);
 
-		size_t GetBufferSize(const AVMediaType n_eMediaType);
+		// Processing data manual
+		virtual void DataProcess();
 
-		// Getting data from the buffer list, the audio and video is
-		// Synchronized, and it will call [m_func] to do with the data
-		// AVStudio calls it to generate output file
-		void AVSync();
+		// Release memory
+		virtual void Release();
 
-		// Pop data from queue, The return value should be free by AVFreeDataPtr()
-		FDataItem* PopData(const AVMediaType n_eMediaType);
-		/*
-		* Check is stream n_eMediaType end
-		* return value:
-		*	0: waiting for more data
-		*	1: contains data
-		*	AVERROR_EOF: is end now
-		*/
-		int IsEnd(const AVMediaType n_eMediaType);
+		const bool IsAllStreamArrived();
+		const bool IsAllStreamDone() const;
 
 		// Set callback function to do with the data
 		void SetupCallback(std::function<void(FDataItem*)> n_func);
 
+		// Set if the coming data should be clone
+		void SetDataClone(bool n_bClone);
+
 	protected:
-		// Pop data item and do with callback [n_func]
-		// If [n_func] is nullptr, just pop data
-		void ApplyData(const AVMediaType n_eMediaType,
-			std::function<void(FDataItem*)> n_func);
+		// Check if media type [n_eMediaType] in use
+		bool CheckMask(const AVMediaType n_eMediaType);
+		// When data arrived, do something
+		void DataArrived(const AVMediaType n_eMediaType);
 
-	private:
-		// Video list
-		std::list<FDataItem*> m_lstVideo;
-		std::list<FDataItem*>::iterator m_itrVideo;
-		// Audio list
-		std::list<FDataItem*> m_lstAudio;
-		std::list<FDataItem*>::iterator m_itrAudio;
+		enum class EIOStatus
+		{
+			// Waiting data arrive
+			IO_Wait = 0,
+			// Data is on the way
+			IO_Doing,
+			// Data is over
+			IO_Done
+		};
 
-		std::mutex	_mutex;
+	protected:
+		// Status of video data 
+		EIOStatus		m_evStatus = EIOStatus::IO_Done;
+		// Status of audio data 
+		EIOStatus		m_eaStatus = EIOStatus::IO_Done;
+
+		// Indicate which stream in use
+		unsigned char	m_nMediaMask = 0;
+
+		// If the coming data should be clone
+		bool			m_bClone = true;
 
 		// Callback when read data
 		std::function<void(FDataItem*)> m_func = nullptr;

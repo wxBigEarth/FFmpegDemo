@@ -15,27 +15,23 @@ extern "C" {
 namespace avstudio
 {
 	// For writing PCM data
-	class IIOPcm
+	class CIOPcm : public IIOHandle
 	{
 	public:
 		void SetupInputParameter(AVCodecContext* n_Codecctx);
 
-		int Writing(const AVMediaType n_eMediatype,
-			const void* n_Data, const int n_nSize);
+		int WriteData(const AVMediaType n_eMediaType,
+			EDataType n_eDataType, void* n_Data, const int n_nSize = 0) override;
 
 		// Fill video frame when write PCM data
-		// Caller rewrite this function to fill frame data
+		// Caller overrides this function to fill frame data
 		virtual void FillVideoFrame(AVFrame* n_Frame,
 			const void* n_Data, const int n_nSize) const;
 
 		// Fill audio frame when write PCM data
-		// Caller rewrite this function to fill frame data
+		// Caller overrides this function to fill frame data
 		virtual void FillAudioFrame(AVFrame* n_Frame,
 			const void* n_Data, const int n_nSize) const;
-
-		// Receive AVFrame here
-		virtual int ReceiveData(const AVMediaType n_eMediaType, 
-			AVFrame* n_Frame) = 0;
 
 		const int VideoPlanes() const;
 

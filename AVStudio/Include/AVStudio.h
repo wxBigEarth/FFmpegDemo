@@ -24,6 +24,8 @@
 #include "Util/Debug.h"
 #include "Util/Setting.h"
 #include "Util/Queue.h"
+#include "Util/DataItem.h"
+#include "Util/MediaMask.h"
 
 #include "Apis/AudioFifo.h"
 #include "Apis/SwsScale.h"
@@ -34,14 +36,16 @@
 #include "Apis/Frame.h"
 #include "Apis/Packet.h"
 #include "Apis/Resample.h"
+#include "Apis/Sdl.h"
 
 #include "Filter/Filter.h"
 #include "Filter/AudioMixFilter.h"
 
 #include "IO/IOHandle.h"
 #include "IO/IOPcm.h"
+#include "IO/IOSyncAV.h"
+#include "IO/IOPlayer.h"
 
-#include "Util/DataItem.h"
 #include "Core/LatheParts.h"
 #include "Core/WorkShop.h"
 #include "Core/Factory.h"

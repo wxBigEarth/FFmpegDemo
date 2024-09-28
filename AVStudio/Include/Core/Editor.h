@@ -3,7 +3,7 @@
 #include <vector>
 #include "Core/Factory.h"
 #include "Util/Thread.h"
-
+#include "IO/IOHandle.h"
 
 
 namespace avstudio
@@ -20,12 +20,12 @@ namespace avstudio
 		* 
 		* const std::string& n_sFileName:	File name
 		* const unsigned int n_nGroupId:	Group id, default is kNO_GROUP
-		* const unsigned int n_nStreamMask:	Streams mask, Indicate which stream is selected
-		*										default is kALL_STREAM
+		* const unsigned char n_nMediaMask:	Media mask, Indicate which stream is selected
+		*										default is MEDIAMASK_AV
 		*/
 		FWorkShop* OpenInputFile(const std::string& n_sFileName,
 			const unsigned int n_nGroupId = kNO_GROUP,
-			const unsigned int n_nStreamMask = kALL_STREAM,
+			const unsigned char n_nMediaMask = MEDIAMASK_AV,
 			const AVInputFormat* n_InputFormat = nullptr,
 			AVDictionary* n_Options = nullptr);
 
@@ -50,6 +50,10 @@ namespace avstudio
 		void SetupFilter(IFilter* n_Filter, AVMediaType n_eMediaType, 
 			unsigned int n_nInputIndex = 0);
 
+		void SetIoHandle(IIOHandle* n_Handle);
+
+		void SetPause(bool n_bPause);
+
 	protected:
 		// Before start, do something first
 		int Processing();
@@ -60,6 +64,16 @@ namespace avstudio
 		void RunByTurn(const std::vector<size_t>& n_vInputs, bool n_bIsLast);
 		void RunByGroup(const std::vector<size_t>& n_vInputs, bool n_bIsLast);
 
+		// Initialize default IOHandle
+		void SetupDefaultIoHandle();
+
+		// Number of data in the buffer
+		size_t GetBufferSize(AVMediaType n_eMediaType);
+
+	public:
+		// If output context is valid, write AVPacket into output file
+		void WriteIntoFile(FDataItem* n_DataItem);
+
 	protected:
 		void Release();
 		void AddLastPts(const double n_dLength);
@@ -67,6 +81,13 @@ namespace avstudio
 	private:
 		std::vector<CFactory*>	m_vInputCtx;
 		FWorkShop				m_OutputFile;
+
+		// IO handle for data stream
+		IIOHandle*				m_IoHandle = nullptr;
+		// If [m_IoHandle] is set by AVStudio, it should be free when release
+		bool					m_bFreeHandle = false;
+
+		bool					m_bPause = false;
 
 		size_t					m_nMaxBufferSize = 50;
 	};

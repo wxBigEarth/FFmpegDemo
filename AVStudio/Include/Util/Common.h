@@ -4,13 +4,6 @@
 #include <vector>
 #include <string>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-#include <libavutil/avutil.h>
-#ifdef __cplusplus
-};
-#endif
 
 
 namespace avstudio 
@@ -22,12 +15,7 @@ namespace avstudio
 		DT_Frame,
 	};
 
-	/*
-	* Add new stream with [n_eMediaType]
-	* unsigned int n_nBaseMask: 
-	*		Current mask, [n_eMediaType] will be merged into [n_nBaseMask]
-	*/
-	unsigned int GetStreamMask(unsigned int n_nBaseMask, AVMediaType n_eMediaType);
+	void* AVClone(EDataType n_eDataType, void* n_Data);
 
 	std::string AnsiToUtf8(const std::string& n_sSource);
 

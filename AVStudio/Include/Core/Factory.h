@@ -1,5 +1,6 @@
 #ifndef __EDITCONTEXT_H__
 #define __EDITCONTEXT_H__
+#include "IO/IOHandle.h"
 #include "Core/WorkShop.h"
 
 
@@ -31,8 +32,10 @@ namespace avstudio
 		//	AVFrame* n_Frame: Null indecates end
 		int WriteFrame(AVFrame* n_Frame, AVMediaType n_eMediaType);
 
-		// Flush ffmpeg buffer queue while ending
+		// Flush FFmpeg buffer queue while ending
 		void Flush();
+
+		void SetIoHandle(IIOHandle* n_Handle);
 
 		const bool IsEnd() const;
 
@@ -44,6 +47,10 @@ namespace avstudio
 		int Converting(AVFrame* n_Frame, AVMediaType n_eMediaType);
 		int Filtering(AVFrame* n_Frame, AVMediaType n_eMediaType);
 		int Encoding(AVFrame* n_Frame, AVMediaType n_eMediaType);
+
+		// Push AVPacket/AVFrame into buffer
+		void PushData(AVMediaType n_eMediaType, 
+			EDataType n_eDataType, void* n_Data);
 
 		// Pop frame from AVAudioFifo buffer
 		int PopFromFifo();
@@ -61,6 +68,9 @@ namespace avstudio
 
 		FWorkShop*	m_Input = nullptr;
 		FWorkShop*	m_Output = nullptr;
+
+		// Data IO.
+		IIOHandle*	m_IoHandle = nullptr;
 
 		// Indicate if it's end
 		bool		m_bIsEnd = false;

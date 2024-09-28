@@ -4,13 +4,11 @@
 #include <functional>
 #include "Apis/FormatContext.h"
 #include "Core/LatheParts.h"
-#include "IO/IOHandle.h"
+#include "Util/MediaMask.h"
 
 
 namespace avstudio
 {
-	// Indicate all streams are selected
-	constexpr auto kALL_STREAM = 0xFFFFFFFF;
 	// Default group id
 	constexpr auto kNO_GROUP = 0xFFFFFFFF;
 
@@ -26,7 +24,7 @@ namespace avstudio
 		~FWorkShop();
 
 		void Init(ECtxType n_eCtxType, 
-			const unsigned int n_nStreamMask = kALL_STREAM);
+			const unsigned char n_nMediaMask = MEDIAMASK_AV);
 		void Release();
 
 		// Do something before start
@@ -50,6 +48,9 @@ namespace avstudio
 		// Is current context valid
 		const bool IsValid() const;
 
+		// Return value: Indicate which stream is in use by bit
+		const unsigned char GetMediaMask() const;
+
 		// Get current context
 		AVFormatContext* FormatContext();
 
@@ -59,8 +60,8 @@ namespace avstudio
 
 		// For output context, select stream
 		void EnableStream(AVMediaType n_eMediaType, bool n_bSelect = true);
-		// Is stream [n_eMediaType] selected
-		bool IsStreamSelected(AVMediaType n_eMediaType) const;
+		// Check if current context comprises stream [n_eMediaType]
+		bool CheckMedia(AVMediaType n_eMediaType) const;
 
 		// Build codec context for output context with stream of input context
 		FCodecContext* BuildCodecContext(AVStream* n_Stream);
@@ -98,15 +99,6 @@ namespace avstudio
 		// Create Audio Fifo buffer
 		void CreateAudioFifo(FCodecContext* n_AudioCodec);
 
-		// Push AVPacket/AVFrame into queue
-		void PushData(AVMediaType n_eMediaType, EDataType n_eDataType, void* n_Data);
-
-		// If output context is valid, write AVPacket into output file
-		void WriteIntoFile(FDataItem* n_DataItem);
-
-		// Number of data in the buffer
-		size_t GetBufferSize(AVMediaType n_eMediaType);
-
 		// Adjust pts for AVFrame that decoded from input context
 		int64_t AdjustPts(int64_t n_nPts, AVMediaType n_eMediaType);
 
@@ -141,8 +133,6 @@ namespace avstudio
 		FLatheParts VideoParts;
 		// Information about audio stream
 		FLatheParts AudioParts;
-		// Data IO. Set by Caller, If not set, it will point to [InnerIOHandle]
-		IIOHandle*	IOHandle = nullptr;
 
 	protected:
 		struct FFragment
@@ -158,11 +148,9 @@ namespace avstudio
 
 	protected:
 		ECtxType	m_eCtxType = ECtxType::CT_Input;
-		// Data IO. Allocate and free by AVStudio if Caller do not set IIOHandle
-		IIOHandle*	InnerIOHandle = nullptr;
 
 		// Selected streams
-		unsigned int m_nStreamMask = kALL_STREAM;
+		unsigned char m_nMediaMask = 0;
 
 		// Input contexts with same id will run at the same time 
 		// if it's not -1

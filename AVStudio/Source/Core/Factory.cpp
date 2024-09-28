@@ -59,7 +59,7 @@ namespace avstudio
 		auto eMediaType = m_Input->Fmt.GetStreamMediaType(m_Packet->stream_index);
 		auto nOffset = m_Input->TryPickup(m_Packet->pts, eMediaType);
 
-		if (m_Input->IsStreamSelected(eMediaType) && nOffset >= 0)
+		if (m_Input->CheckMedia(eMediaType) && nOffset >= 0)
 		{
 			m_Packet->pts -= nOffset;
 			m_Packet->dts -= nOffset;
@@ -146,6 +146,11 @@ namespace avstudio
 		m_bIsEnd = true;
 	}
 
+	void CFactory::SetIoHandle(IIOHandle* n_Handle)
+	{
+		m_IoHandle = n_Handle;
+	}
+
 	const bool CFactory::IsEnd() const
 	{
 		return m_bIsEnd;
@@ -197,7 +202,7 @@ namespace avstudio
 			else
 				p->pts += m_Output->GetLastPts(n_eMediaType);
 
-			m_Output->PushData(n_eMediaType, EDataType::DT_Packet, p);
+			PushData(n_eMediaType, EDataType::DT_Packet, p);
 			return 0;
 		}
 
@@ -391,7 +396,7 @@ namespace avstudio
 			(!n_Frame && (!m_bIsLastItem || !m_bIsLastGroup)) ||
 			!m_Output->IsValid())
 		{
-			m_Output->PushData(n_eMediaType, EDataType::DT_Frame, n_Frame);
+			PushData(n_eMediaType, EDataType::DT_Frame, n_Frame);
 			return ret;
 		}
 
@@ -417,12 +422,21 @@ namespace avstudio
 					n_Packet->stream_index = oLatheParts->nStreamIndex;
 				}
 
-				m_Output->PushData(n_eMediaType, EDataType::DT_Packet, n_Packet);
+				PushData(n_eMediaType, EDataType::DT_Packet, n_Packet);
 
 				return 0;
 			});
 
 		return ret;
+	}
+
+	void CFactory::PushData(AVMediaType n_eMediaType, 
+		EDataType n_eDataType, void* n_Data)
+	{
+		if (!m_IoHandle) return;
+
+		m_IoHandle->WriteData(n_eMediaType, n_eDataType, n_Data);
+		m_IoHandle->DataProcess();
 	}
 
 	int CFactory::PopFromFifo()

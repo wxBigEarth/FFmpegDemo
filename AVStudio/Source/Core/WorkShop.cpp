@@ -4,44 +4,22 @@
 
 namespace avstudio
 {
-	static void* AVClone(EDataType n_eDataType, void* n_Data)
-	{
-		void* Data = nullptr;
-
-		if (!n_Data) return Data;
-
-		if (n_eDataType == EDataType::DT_Frame)
-		{
-			AVFrame* Frame = av_frame_alloc();
-			av_frame_move_ref(Frame, (AVFrame*)n_Data);
-			Data = Frame;
-		}
-		else if (n_eDataType == EDataType::DT_Packet)
-		{
-			AVPacket* Packet = av_packet_alloc();
-			av_packet_move_ref(Packet, (AVPacket*)n_Data);
-			Data = Packet;
-		}
-
-		return Data;
-	}
-
 	FWorkShop::~FWorkShop()
 	{
 		Release();
 	}
 
-	void FWorkShop::Init(ECtxType n_eCtxType, const unsigned int n_nStreamMask)
+	void FWorkShop::Init(ECtxType n_eCtxType, const unsigned char n_nMediaMask)
 	{
 		m_eCtxType = n_eCtxType;
-		m_nStreamMask = n_nStreamMask;
+		m_nMediaMask = 0;
 
 		if (!Fmt.IsValid()) return;
 
 		// Make sure it's input context
 		if (m_eCtxType == ECtxType::CT_Input)
 		{
-			if (IsStreamSelected(AVMediaType::AVMEDIA_TYPE_VIDEO))
+			if (IsCompriseMedia(n_nMediaMask, AVMediaType::AVMEDIA_TYPE_VIDEO))
 			{
 				const AVCodec* VideoCodec = nullptr;
 				VideoParts.nStreamIndex = Fmt.FindStreamIndex(
@@ -56,10 +34,12 @@ namespace avstudio
 
 					VideoParts.Codec->Alloc(VideoCodec);
 					VideoParts.Codec->CopyCodecParameter(VideoParts.Stream);
+
+					CombineMedia(m_nMediaMask, AVMediaType::AVMEDIA_TYPE_VIDEO);
 				}
 			}
 
-			if (IsStreamSelected(AVMediaType::AVMEDIA_TYPE_AUDIO))
+			if (IsCompriseMedia(n_nMediaMask, AVMediaType::AVMEDIA_TYPE_AUDIO))
 			{
 				const AVCodec* AudioCodec = nullptr;
 				AudioParts.nStreamIndex = Fmt.FindStreamIndex(
@@ -71,12 +51,14 @@ namespace avstudio
 
 					AudioParts.Codec->Alloc(AudioCodec);
 					AudioParts.Codec->CopyCodecParameter(AudioParts.Stream);
+
+					CombineMedia(m_nMediaMask, AVMediaType::AVMEDIA_TYPE_AUDIO);
 				}
 			}
 		}
 		else if (m_eCtxType == ECtxType::CT_Output)
 		{
-			m_nStreamMask = 0;
+			m_nMediaMask = 0;
 		}
 	}
 
@@ -86,24 +68,17 @@ namespace avstudio
 		AudioParts.Release();
 		m_vFragments.clear();
 
-		m_nStreamMask = -1;
+		m_nMediaMask = -1;
 		m_nGroupId = -1;
 		m_nVideoPts = 0;
 		m_nAudioPts = 0;
 
 		Fmt.Release();
-		IOHandle = nullptr;
-
-		if (InnerIOHandle)
-		{
-			delete InnerIOHandle;
-			InnerIOHandle = nullptr;
-		}
 	}
 
 	void FWorkShop::Processing()
 	{
-		if (IsStreamSelected(AVMediaType::AVMEDIA_TYPE_VIDEO))
+		if (IsCompriseMedia(m_nMediaMask, AVMediaType::AVMEDIA_TYPE_VIDEO))
 		{
 			if (m_eCtxType == ECtxType::CT_Output)
 			{
@@ -126,7 +101,7 @@ namespace avstudio
 			}
 		}
 		
-		if (IsStreamSelected(AVMediaType::AVMEDIA_TYPE_AUDIO))
+		if (IsCompriseMedia(m_nMediaMask, AVMediaType::AVMEDIA_TYPE_AUDIO))
 		{
 			if (m_eCtxType == ECtxType::CT_Output)
 			{
@@ -146,19 +121,6 @@ namespace avstudio
 					!AudioParts.Codec ||
 					!AudioParts.Codec->Context,
 					"Audio stream: not initialize complete\n");
-			}
-		}
-
-		if (m_eCtxType == ECtxType::CT_Output)
-		{
-			// Set IO handle for output context
-			if (!IOHandle)
-			{
-				InnerIOHandle = new IIOHandle();
-				IOHandle = InnerIOHandle;
-
-				IOHandle->SetupCallback(
-					std::bind(&FWorkShop::WriteIntoFile, this, std::placeholders::_1));
 			}
 		}
 	}
@@ -186,6 +148,11 @@ namespace avstudio
 	const bool FWorkShop::IsValid() const
 	{
 		return Fmt.IsValid();
+	}
+
+	const unsigned char FWorkShop::GetMediaMask() const
+	{
+		return m_nMediaMask;
 	}
 
 	AVFormatContext* FWorkShop::FormatContext()
@@ -237,37 +204,19 @@ namespace avstudio
 
 	void FWorkShop::EnableStream(AVMediaType n_eMediaType, bool n_bSelect)
 	{
-		if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_VIDEO)
+		if (n_bSelect)
 		{
-			if (n_bSelect)
-			{
-				m_nStreamMask |= (1 << n_eMediaType);
-			}
-			else
-			{
-				m_nStreamMask &= ~(1 << n_eMediaType);
-			}
+			CombineMedia(m_nMediaMask, n_eMediaType);
 		}
-		else if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_AUDIO)
+		else
 		{
-			if (n_bSelect)
-			{
-				m_nStreamMask |= (1 << n_eMediaType);
-			}
-			else
-			{
-				m_nStreamMask &= ~(1 << n_eMediaType);
-			}
+			SeparateMedia(m_nMediaMask, n_eMediaType);
 		}
 	}
 
-	bool FWorkShop::IsStreamSelected(AVMediaType n_eMediaType) const
+	bool FWorkShop::CheckMedia(AVMediaType n_eMediaType) const
 	{
-		if (n_eMediaType > AVMediaType::AVMEDIA_TYPE_UNKNOWN && 
-			n_eMediaType < AVMediaType::AVMEDIA_TYPE_NB)
-			return m_nStreamMask & (1 << n_eMediaType);
-
-		return false;
+		return IsCompriseMedia(m_nMediaMask, n_eMediaType);
 	}
 
 	FCodecContext* FWorkShop::BuildCodecContext(AVStream* n_Stream)
@@ -284,7 +233,7 @@ namespace avstudio
 		if (!Codec) return Result;
 
 		if (n_Stream->codecpar->codec_type == AVMediaType::AVMEDIA_TYPE_VIDEO && 
-			IsStreamSelected(AVMediaType::AVMEDIA_TYPE_VIDEO))
+			IsCompriseMedia(m_nMediaMask, AVMediaType::AVMEDIA_TYPE_VIDEO))
 		{
 			VideoParts.Codec = new FCodecContext();
 			auto ctx = VideoParts.Codec->Alloc(Codec);
@@ -309,7 +258,7 @@ namespace avstudio
 			if (m_funcMiddleware) m_funcMiddleware(this);
 		}
 		else if (n_Stream->codecpar->codec_type == AVMediaType::AVMEDIA_TYPE_AUDIO && 
-			IsStreamSelected(AVMediaType::AVMEDIA_TYPE_AUDIO))
+			IsCompriseMedia(m_nMediaMask, AVMediaType::AVMEDIA_TYPE_AUDIO))
 		{
 			AudioParts.Codec = new FCodecContext();
 			AudioParts.Codec->Alloc(Codec);
@@ -335,7 +284,7 @@ namespace avstudio
 		if (!Codec) return Result;
 
 		if (Codec->type == AVMediaType::AVMEDIA_TYPE_AUDIO && 
-			IsStreamSelected(Codec->type))
+			IsCompriseMedia(m_nMediaMask, Codec->type))
 		{
 			Result = AudioParts.Codec;
 			if (!Result)
@@ -364,7 +313,7 @@ namespace avstudio
 			if (m_funcMiddleware) m_funcMiddleware(this);
 		}
 		else if (Codec->type == AVMediaType::AVMEDIA_TYPE_VIDEO && 
-			IsStreamSelected(Codec->type))
+			IsCompriseMedia(m_nMediaMask, Codec->type))
 		{
 			Result = VideoParts.Codec;
 			if (!Result)
@@ -427,7 +376,7 @@ namespace avstudio
 		AVStream* Stream = nullptr;
 
 		if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_VIDEO &&
-			IsStreamSelected(n_eMediaType))
+			IsCompriseMedia(m_nMediaMask, n_eMediaType))
 		{
 			if (VideoParts.nStreamIndex < 0)
 			{
@@ -438,7 +387,7 @@ namespace avstudio
 			Stream = VideoParts.Stream;
 		}
 		else if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_AUDIO &&
-			IsStreamSelected(n_eMediaType))
+			IsCompriseMedia(m_nMediaMask, n_eMediaType))
 		{
 			if (AudioParts.nStreamIndex < 0)
 			{
@@ -460,7 +409,7 @@ namespace avstudio
 
 		if (n_Input->VideoParts.Stream && 
 			n_eMediaType == AVMediaType::AVMEDIA_TYPE_VIDEO && 
-			IsStreamSelected(n_eMediaType))
+			IsCompriseMedia(m_nMediaMask, n_eMediaType))
 		{
 			VideoParts.Stream = Fmt.BuildStream(n_Input->VideoParts.Stream);
 			VideoParts.nStreamIndex = VideoParts.Stream->index;
@@ -468,7 +417,7 @@ namespace avstudio
 
 		if (n_Input->AudioParts.Stream && 
 			n_eMediaType == AVMediaType::AVMEDIA_TYPE_AUDIO && 
-			IsStreamSelected(n_eMediaType))
+			IsCompriseMedia(m_nMediaMask, n_eMediaType))
 		{
 			AudioParts.Stream = Fmt.BuildStream(n_Input->AudioParts.Stream);
 			AudioParts.nStreamIndex = AudioParts.Stream->index;
@@ -482,7 +431,7 @@ namespace avstudio
 
 		if ((n_eMediaType == AVMediaType::AVMEDIA_TYPE_VIDEO ||
 			n_eMediaType == AVMediaType::AVMEDIA_TYPE_UNKNOWN) && 
-			IsStreamSelected(n_eMediaType))
+			IsCompriseMedia(m_nMediaMask, n_eMediaType))
 		{
 			VideoParts.Stream = Fmt.BuildStream(n_CodecContext);
 			VideoParts.nStreamIndex = VideoParts.Stream->index;
@@ -490,7 +439,7 @@ namespace avstudio
 
 		if ((n_eMediaType == AVMediaType::AVMEDIA_TYPE_AUDIO ||
 			n_eMediaType == AVMediaType::AVMEDIA_TYPE_UNKNOWN) && 
-			IsStreamSelected(n_eMediaType))
+			IsCompriseMedia(m_nMediaMask, n_eMediaType))
 		{
 			AudioParts.Stream = Fmt.BuildStream(n_CodecContext);
 			AudioParts.nStreamIndex = AudioParts.Stream->index;
@@ -521,7 +470,7 @@ namespace avstudio
 	{
 		if ((n_eMediaType == AVMediaType::AVMEDIA_TYPE_VIDEO ||
 			n_eMediaType == AVMediaType::AVMEDIA_TYPE_UNKNOWN) &&
-			IsStreamSelected(AVMediaType::AVMEDIA_TYPE_VIDEO))
+			IsCompriseMedia(m_nMediaMask, AVMediaType::AVMEDIA_TYPE_VIDEO))
 		{
 			if (VideoParts.nShouldDecode <= 0)
 				VideoParts.nShouldDecode = CompareCodecFormat(
@@ -541,7 +490,7 @@ namespace avstudio
 
 		if ((n_eMediaType == AVMediaType::AVMEDIA_TYPE_AUDIO ||
 			n_eMediaType == AVMediaType::AVMEDIA_TYPE_UNKNOWN) &&
-			IsStreamSelected(AVMediaType::AVMEDIA_TYPE_AUDIO))
+			IsCompriseMedia(m_nMediaMask, AVMediaType::AVMEDIA_TYPE_AUDIO))
 		{
 			if (AudioParts.nShouldDecode <= 0)
 				AudioParts.nShouldDecode = CompareCodecFormat(
@@ -565,7 +514,7 @@ namespace avstudio
 
 		if ((n_eMediaType == AVMediaType::AVMEDIA_TYPE_VIDEO ||
 			n_eMediaType == AVMediaType::AVMEDIA_TYPE_UNKNOWN) &&
-			IsStreamSelected(AVMediaType::AVMEDIA_TYPE_VIDEO))
+			IsCompriseMedia(m_nMediaMask, AVMediaType::AVMEDIA_TYPE_VIDEO))
 		{
 			if (VideoParts.Codec)
 			{
@@ -582,7 +531,7 @@ namespace avstudio
 
 		if ((n_eMediaType == AVMediaType::AVMEDIA_TYPE_AUDIO ||
 			n_eMediaType == AVMediaType::AVMEDIA_TYPE_UNKNOWN) &&
-			IsStreamSelected(AVMediaType::AVMEDIA_TYPE_AUDIO))
+			IsCompriseMedia(m_nMediaMask, AVMediaType::AVMEDIA_TYPE_AUDIO))
 		{
 			if (AudioParts.Codec)
 			{
@@ -621,45 +570,6 @@ namespace avstudio
 					n_AudioCodec->Context->ch_layout.nb_channels,
 					n_AudioCodec->Context->frame_size);
 		}
-	}
-
-	void FWorkShop::PushData(AVMediaType n_eMediaType, EDataType n_eDataType, void* n_Data)
-	{
-		if (m_eCtxType != ECtxType::CT_Output || !IOHandle) return;
-
-		void* Data = AVClone(n_eDataType, n_Data);
-		IOHandle->WriteData(n_eMediaType, n_eDataType, Data);
-		IOHandle->AVSync();
-	}
-
-	void FWorkShop::WriteIntoFile(FDataItem* n_DataItem)
-	{
-		if (!IsValid()) return;
-
-		if (n_DataItem->DataType == EDataType::DT_Packet)
-			Fmt.InterleavedWritePacket(n_DataItem->p());
-	}
-
-	size_t FWorkShop::GetBufferSize(AVMediaType n_eMediaType)
-	{
-		size_t nResult = 0;
-
-		if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_VIDEO)
-		{
-			if (!IsStreamSelected(n_eMediaType))
-				nResult = AV_TIME_BASE;
-			else if (IOHandle)
-				nResult = IOHandle->GetBufferSize(n_eMediaType);
-		}
-		else if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_AUDIO)
-		{
-			if (!IsStreamSelected(n_eMediaType))
-				nResult = AV_TIME_BASE;
-			else if (IOHandle)
-				nResult = IOHandle->GetBufferSize(n_eMediaType);
-		}
-
-		return nResult;
 	}
 
 	int64_t FWorkShop::AdjustPts(int64_t n_nPts, AVMediaType n_eMediaType)

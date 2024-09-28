@@ -1,1 +1,0 @@
-this is a video player demo in qt environment.

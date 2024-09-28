@@ -2,6 +2,7 @@
 #include "Core/Editor.h"
 #include "Util/Debug.h"
 #include "Util/Common.h"
+#include "IO/IOSyncAV.h"
 
 
 namespace avstudio
@@ -17,7 +18,7 @@ namespace avstudio
 
 	FWorkShop* CEditor::OpenInputFile(const std::string& n_sFileName,
 		const unsigned int n_nGroupId /*= kNO_GROUP*/,
-		const unsigned int n_nStreamMask /*= kALL_STREAM*/,
+		const unsigned char n_nMediaMask /*= MEDIAMASK_AV*/,
 		const AVInputFormat* n_InputFormat /*= nullptr*/, 
 		AVDictionary* n_Options /*= nullptr*/)
 	{
@@ -28,7 +29,7 @@ namespace avstudio
 			AVFile->Fmt.OpenInputFile(n_sFileName, n_InputFormat, n_Options);
 		}
 
-		AVFile->Init(ECtxType::CT_Input, n_nStreamMask);
+		AVFile->Init(ECtxType::CT_Input, n_nMediaMask);
 		AVFile->SetGroupId(n_nGroupId);
 
 		size_t nSize = m_vInputCtx.size();
@@ -95,6 +96,16 @@ namespace avstudio
 			auto WorkShop = m_vInputCtx[n_nInputIndex]->Input();
 			WorkShop->SetupFilter(n_eMediaType, n_Filter);
 		}
+	}
+
+	void CEditor::SetIoHandle(IIOHandle* n_Handle)
+	{
+		m_IoHandle = n_Handle;
+	}
+
+	void CEditor::SetPause(bool n_bPause)
+	{
+		m_bPause = n_bPause;
 	}
 
 	int CEditor::Processing()
@@ -308,6 +319,8 @@ namespace avstudio
 				m_OutputFile.Processing();
 				m_OutputFile.Fmt.WriteHeader();
 
+				SetupDefaultIoHandle();
+
 				int nCurrentId = -1;
 				std::vector<int> vInuts;
 
@@ -318,6 +331,8 @@ namespace avstudio
 				{
 					auto WorkShop = m_vInputCtx[i]->Input();
 					auto nGroupId = WorkShop->GetGroupId();
+
+					m_vInputCtx[i]->SetIoHandle(m_IoHandle);
 
 					WorkShop->SetGroupIndex(
 						(unsigned int)mGroup[nGroupId].size());
@@ -336,6 +351,7 @@ namespace avstudio
 
 				for (auto itr = mGroup.cbegin(); itr != mGroup.cend(); itr++)
 				{
+					if (m_IoHandle) m_IoHandle->Processing();
 					nIndex++;
 					RunByGroup(itr->second, nIndex == mGroup.size());
 				}
@@ -363,14 +379,16 @@ namespace avstudio
 			Factory->Processing(i == m_vInputCtx.size() - 1, n_bIsLast);
 			Factory->Input()->CheckForDecoding(&m_OutputFile);
 
+			if (m_IoHandle) m_IoHandle->Processing();
+
 			while (ret != AVERROR_EOF && !IsStop())
 			{
-				vSize = m_OutputFile.GetBufferSize(AVMediaType::AVMEDIA_TYPE_VIDEO);
-				aSize = m_OutputFile.GetBufferSize(AVMediaType::AVMEDIA_TYPE_AUDIO);
+				vSize = GetBufferSize(AVMediaType::AVMEDIA_TYPE_VIDEO);
+				aSize = GetBufferSize(AVMediaType::AVMEDIA_TYPE_AUDIO);
 
-				if (m_nMaxBufferSize > 0 &&
+				if ((m_nMaxBufferSize > 0 &&
 					vSize > m_nMaxBufferSize &&
-					aSize > m_nMaxBufferSize)
+					aSize > m_nMaxBufferSize) || m_bPause)
 				{
 					std::this_thread::sleep_for(std::chrono::microseconds(10));
 					continue;
@@ -420,12 +438,12 @@ namespace avstudio
 				auto Factory = m_vInputCtx[n_vInputs[i]];
 				if (Factory->IsEnd()) continue;
 
-				vSize = m_OutputFile.GetBufferSize(AVMediaType::AVMEDIA_TYPE_VIDEO);
-				aSize = m_OutputFile.GetBufferSize(AVMediaType::AVMEDIA_TYPE_AUDIO);
+				vSize = GetBufferSize(AVMediaType::AVMEDIA_TYPE_VIDEO);
+				aSize = GetBufferSize(AVMediaType::AVMEDIA_TYPE_AUDIO);
 
-				if (m_nMaxBufferSize > 0 &&
+				if ((m_nMaxBufferSize > 0 &&
 					vSize > m_nMaxBufferSize &&
-					aSize > m_nMaxBufferSize)
+					aSize > m_nMaxBufferSize) || m_bPause)
 				{
 					std::this_thread::sleep_for(std::chrono::microseconds(10));
 					continue;
@@ -462,17 +480,58 @@ namespace avstudio
 		}
 	}
 
+	void CEditor::SetupDefaultIoHandle()
+	{
+		// If IO handle has been setup, or the output context is invalid, 
+		// no need to create default IO handle
+		if (!m_IoHandle && m_OutputFile.IsValid())
+		{
+			m_IoHandle = new CIOSyncAV();
+
+			m_IoHandle->SetupCallback(
+				std::bind(&CEditor::WriteIntoFile, this, std::placeholders::_1));
+
+			m_bFreeHandle = true;
+		}
+
+		m_IoHandle->Init(m_OutputFile.GetMediaMask());
+	}
+
+	size_t CEditor::GetBufferSize(AVMediaType n_eMediaType)
+	{
+		if (!m_IoHandle) return 0;
+		return m_IoHandle->GetBufferSize(n_eMediaType);
+	}
+
+	void CEditor::WriteIntoFile(FDataItem* n_DataItem)
+	{
+		if (!m_OutputFile.IsValid()) return;
+
+		if (n_DataItem->DataType == EDataType::DT_Packet)
+			m_OutputFile.Fmt.InterleavedWritePacket(n_DataItem->p());
+	}
+
 	void CEditor::Release()
 	{
 		ReleaseVector(m_vInputCtx);
 		m_OutputFile.Release();
+
+		if (m_IoHandle)
+		{
+			m_IoHandle->Release();
+			if (m_bFreeHandle)
+			{
+				delete m_IoHandle;
+				m_IoHandle = nullptr;
+			}
+		}
 	}
 
 	void CEditor::AddLastPts(const double n_dLength)
 	{
 		AVRational tb = { 1, 1 };
 
-		if (m_OutputFile.IsStreamSelected(AVMediaType::AVMEDIA_TYPE_VIDEO))
+		if (m_OutputFile.CheckMedia(AVMediaType::AVMEDIA_TYPE_VIDEO))
 		{
 			if (m_OutputFile.VideoParts.Codec &&
 				m_OutputFile.VideoParts.Codec->Context)
@@ -484,7 +543,7 @@ namespace avstudio
 			m_OutputFile.AddLastPts(v, AVMediaType::AVMEDIA_TYPE_VIDEO);
 		}
 
-		if (m_OutputFile.IsStreamSelected(AVMediaType::AVMEDIA_TYPE_AUDIO))
+		if (m_OutputFile.CheckMedia(AVMediaType::AVMEDIA_TYPE_AUDIO))
 		{
 			if (m_OutputFile.AudioParts.Codec &&
 				m_OutputFile.AudioParts.Codec->Context)

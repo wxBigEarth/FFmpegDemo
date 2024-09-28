@@ -10,19 +10,19 @@ extern "C" {
 
 namespace avstudio
 {
-	void IIOPcm::SetupInputParameter(AVCodecContext* n_Codecctx)
+	void CIOPcm::SetupInputParameter(AVCodecContext* n_Codecctx)
 	{
 		m_vCodecCtx = n_Codecctx;
 	}
 
-	int IIOPcm::Writing(const AVMediaType n_eMediatype,
-		const void* n_Data, const int n_nSize)
+	int CIOPcm::WriteData(const AVMediaType n_eMediaType,
+		EDataType n_eDataType, void* n_Data, const int n_nSize)
 	{
 		int ret = -1;
 		AVFrame* Frame = nullptr;
 
 		if (m_vCodecCtx &&
-			n_eMediatype == AVMediaType::AVMEDIA_TYPE_VIDEO)
+			n_eMediaType == AVMediaType::AVMEDIA_TYPE_VIDEO)
 		{
 			m_vFrame = FFrame::VideoFrame(
 				m_vCodecCtx->width,
@@ -40,7 +40,7 @@ namespace avstudio
 		}
 
 		if (m_aCodecCtx &&
-			n_eMediatype == AVMediaType::AVMEDIA_TYPE_AUDIO)
+			n_eMediaType == AVMediaType::AVMEDIA_TYPE_AUDIO)
 		{
 			m_aFrame = FFrame::AudioFrame(
 				m_aCodecCtx->frame_size, 
@@ -60,14 +60,14 @@ namespace avstudio
 
 		if (Frame)
 		{
-			ret = ReceiveData(n_eMediatype, Frame);
+			ret = ReceiveData(n_eMediaType, EDataType::DT_Frame, Frame);
 			av_frame_unref(Frame);
 		}
 
 		return ret;
 	}
 
-	void IIOPcm::FillVideoFrame(AVFrame* n_Frame,
+	void CIOPcm::FillVideoFrame(AVFrame* n_Frame,
 		const void* n_Data, const int n_nSize) const
 	{
 		int nPlanes = VideoPlanes();
@@ -91,7 +91,7 @@ namespace avstudio
 		}
 	}
 
-	void IIOPcm::FillAudioFrame(AVFrame* n_Frame, 
+	void CIOPcm::FillAudioFrame(AVFrame* n_Frame, 
 		const void* n_Data, const int n_nSize) const
 	{
 		int nIsPlanar = IsAudioPlanar();
@@ -104,7 +104,6 @@ namespace avstudio
 		}
 		else
 		{
-
 			uint8_t* ptr = (uint8_t*)n_Data;
 			for (int i = 0; i < n_Frame->nb_samples; i++)
 			{
@@ -120,32 +119,32 @@ namespace avstudio
 		}
 	}
 
-	const int IIOPcm::VideoPlanes() const
+	const int CIOPcm::VideoPlanes() const
 	{
 		if (!m_vCodecCtx) return 0;
 		return av_pix_fmt_count_planes(m_vCodecCtx->pix_fmt);
 	}
 
-	const int IIOPcm::BytesPerPixel() const
+	const int CIOPcm::BytesPerPixel() const
 	{
 		if (!m_vCodecCtx) return 0;
 		auto desc = av_pix_fmt_desc_get(m_vCodecCtx->pix_fmt);
 		return av_get_bits_per_pixel(desc) / 8;
 	}
 
-	const int IIOPcm::IsAudioPlanar() const
+	const int CIOPcm::IsAudioPlanar() const
 	{
 		if (!m_aCodecCtx) return -1;
 		return av_sample_fmt_is_planar(m_aCodecCtx->sample_fmt);
 	}
 
-	const int IIOPcm::BytesPerSample() const
+	const int CIOPcm::BytesPerSample() const
 	{
 		if (!m_aCodecCtx) return 0;
 		return av_get_bytes_per_sample(m_aCodecCtx->sample_fmt);
 	}
 
-	const int IIOPcm::ChannelCount() const
+	const int CIOPcm::ChannelCount() const
 	{
 		if (!m_aCodecCtx) return 0;
 		return m_aCodecCtx->ch_layout.nb_channels;
