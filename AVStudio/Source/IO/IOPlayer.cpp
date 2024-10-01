@@ -1,5 +1,10 @@
 #include "IO/IOPlayer.h"
 #include "Util/Debug.h"
+#if defined(_WIN32) || defined(_WIN64) 
+
+#elif defined(__unix__) || defined(__unix)
+#include <time.h>
+#endif
 
 namespace avstudio
 {
@@ -91,14 +96,7 @@ namespace avstudio
 		m_lstVideo.pop_front();
 
 		if (n_Frame)
-		{
 			m_dVideoTime = n_Frame->pts * av_q2d(n_Frame->time_base);
-			if (m_eaStatus == EIOStatus::IO_Done)
-			{
-				// If audio stream is end, update time
-				m_dAudioTime = m_dVideoTime;
-			}
-		}
 		else
 			m_evStatus = EIOStatus::IO_Done;
 
@@ -140,11 +138,28 @@ namespace avstudio
 			{
 				auto delta = m_dVideoTime - m_dAudioTime;
 				if (delta > 0)
-					std::this_thread::sleep_for(
-						std::chrono::milliseconds((int)(delta * 1000)));
+				{
+#if defined(_WIN32) || defined(_WIN64) 
+					// On Windows, sleep accuracy is insufficient, 
+					// reduce 1 millisecond for correction
+					int t = (int)(delta * 1000) - 1;
+					std::this_thread::sleep_for(std::chrono::milliseconds(t));
+#elif defined(__unix__) || defined(__unix)
+					struct timespec ts;
+					ts.tv_sec = (int)delta;
+					ts.tv_nsec = (delta - ts.tv_sec) * 1000000000;
+					nanosleep(&ts, NULL);
+#endif
+				}
 
-				Update();
+				if (m_eaStatus == EIOStatus::IO_Done)
+				{
+					// If audio stream is end, update time
+					m_dAudioTime = m_dVideoTime;
+				}
+
 				m_dVideoTime = AV_NOPTS_VALUE;
+				Update();
 			}
 			else
 				std::this_thread::sleep_for(std::chrono::milliseconds(kDelay));

@@ -6,8 +6,6 @@
 
 namespace avstudio
 {
-#define DISPLAY_VIDEO  (SDL_USEREVENT + 1) 
-
 	FSdl::~FSdl()
 	{
 		Release();
@@ -28,12 +26,19 @@ namespace avstudio
 		ThrowExceptionExpr(ret, "Fail to initialize SDL: %s.\n", SDL_GetError());
 
 		m_SdlHandle = n_Handle;
+		m_nMediaMask = n_nMediaMask;
+
+		// Callback function to update video
+		m_SdlHandle->SetUpdateCallback(std::bind(&FSdl::UpdateVideo, this));
 	}
 
 	void FSdl::InitVideo(const char* n_szTitle,
 		const int n_nWidth, const int n_nHeight)
 	{
 		if (m_Window) return;
+
+		bool b = IsCompriseMedia(m_nMediaMask, AVMediaType::AVMEDIA_TYPE_VIDEO);
+		if (!b) return;
 
 		m_Window = SDL_CreateWindow(n_szTitle,
 			SDL_WINDOWPOS_UNDEFINED,
@@ -48,11 +53,16 @@ namespace avstudio
 		CreateRenderer(m_Window);
 
 		CreateTexture(SDL_PIXELFORMAT_IYUV);
+		
+		m_nDisplayEvent = SDL_RegisterEvents(1);
 	}
 
 	void FSdl::InitVideo(const void* n_WinId)
 	{
 		if (m_Window) return;
+
+		bool b = IsCompriseMedia(m_nMediaMask, AVMediaType::AVMEDIA_TYPE_VIDEO);
+		if (!b) return;
 
 		m_Window = SDL_CreateWindowFrom(n_WinId);
 
@@ -62,6 +72,8 @@ namespace avstudio
 		CreateRenderer(m_Window);
 
 		CreateTexture(SDL_PIXELFORMAT_IYUV);
+
+		m_nDisplayEvent = SDL_RegisterEvents(1);
 	}
 
 	void FSdl::InitAudio(
@@ -70,6 +82,9 @@ namespace avstudio
 		int n_nNbChannel,
 		AVSampleFormat n_nSampleFormat)
 	{
+		bool b = IsCompriseMedia(m_nMediaMask, AVMediaType::AVMEDIA_TYPE_AUDIO);
+		if (!b) return;
+
 		SDL_AudioSpec AudioSpec = { 0 };
 
 		AudioSpec.freq = n_nSampleRate;
@@ -186,10 +201,9 @@ namespace avstudio
 					SDL_GetWindowSize(m_Window, &m_Rect.w, &m_Rect.h);
 				}
 				break;
-			case DISPLAY_VIDEO:
-				VideoProc();
-				break;
 			default:
+				if (m_nDisplayEvent == Event.type && m_Window)
+					UpdateVideo();
 				break;
 			}
 
@@ -202,8 +216,19 @@ namespace avstudio
 	void FSdl::SendDisplayEvent()
 	{
 		SDL_Event Event{};
-		Event.type = DISPLAY_VIDEO;
+		Event.type = m_nDisplayEvent;
 		SDL_PushEvent(&Event);
+	}
+
+	void FSdl::UpdateVideo()
+	{
+		if (!m_SdlHandle || !m_Window) return;
+
+		AVFrame* Frame = m_SdlHandle->SDL_ReadFrame(AVMediaType::AVMEDIA_TYPE_VIDEO);
+		if (!Frame) return;
+
+		UpdateYUV(Frame);
+		m_SdlHandle->SDL_ReadEnd(Frame);
 	}
 
 	void FSdl::Play()
@@ -281,21 +306,10 @@ namespace avstudio
 		unsigned char* n_szStream, int n_nLen)
 	{
 		FSdl* Sdl = (FSdl*)n_UserData;
-		if (Sdl) Sdl->AudioProc(n_szStream, n_nLen);
+		if (Sdl) Sdl->UpdateAudio(n_szStream, n_nLen);
 	}
 
-	void FSdl::VideoProc()
-	{
-		if (!m_SdlHandle) return;
-
-		AVFrame* Frame = m_SdlHandle->SDL_ReadFrame(AVMediaType::AVMEDIA_TYPE_VIDEO);
-		if (!Frame) return;
-
-		UpdateYUV(Frame);
-		m_SdlHandle->SDL_ReadEnd(Frame);
-	}
-
-	void FSdl::AudioProc(unsigned char* n_szStream, int n_nLen)
+	void FSdl::UpdateAudio(unsigned char* n_szStream, int n_nLen)
 	{
 		if (!m_SdlHandle) return;
 

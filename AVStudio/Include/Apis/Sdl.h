@@ -22,6 +22,13 @@ namespace avstudio
 		virtual void SDL_ReadEnd(AVFrame* n_Frame) {}
 		// Quit
 		virtual void SDL_Stop() {}
+		// Update video 
+		void SDL_Update() const { if (m_fnUpdate) m_fnUpdate(); }
+
+		void SetUpdateCallback(std::function<void()> func) { m_fnUpdate = func; }
+
+	protected:
+		std::function<void()> m_fnUpdate = nullptr;
 	};
 
 	struct FSdl
@@ -57,7 +64,10 @@ namespace avstudio
 		// SDL event, should call in the same thread as InitVieo
 		const unsigned int Event();
 		// Send event to display video
-		static void SendDisplayEvent();
+		void SendDisplayEvent();
+
+		// Video callback PROC
+		void UpdateVideo();
 
 		// Play
 		void Play();
@@ -79,19 +89,20 @@ namespace avstudio
 		static void AudioCallback(void* n_UserData,
 			unsigned char* n_szStream, int n_nLen);
 
-		// Video callback PROC
-		void VideoProc();
 		// Audio callback PROC
-		void AudioProc(unsigned char* n_szStream, int n_nLen);
+		void UpdateAudio(unsigned char* n_szStream, int n_nLen);
 
 	protected:
 		SDL_Window*		m_Window = nullptr;
 		SDL_Renderer*	m_Renderer = nullptr;
 		SDL_Texture*	m_Texture = nullptr;
-
 		SDL_Rect		m_Rect = { 0 };
 
 		ISdlHandle*		m_SdlHandle = nullptr;
+
+		unsigned char	m_nMediaMask = 0;
+		// Event that display video
+		unsigned int	m_nDisplayEvent = 0;
 		
 		// Channel count
 		int				m_nChannels = 1;

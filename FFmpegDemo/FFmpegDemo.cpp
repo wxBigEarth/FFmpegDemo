@@ -199,7 +199,7 @@ public:
 	// 通过 CIOPlayer 继承
 	int Update() override
 	{
-		FSdl::SendDisplayEvent();
+		SDL_Update();
 		return 0;
 	}
 
@@ -243,32 +243,41 @@ static void Play()
 		// Frames will be sent to op
 		Editor.SetIoHandle(&op);
 
+		//auto Input = Editor.OpenInputFile("4.mp4", kNO_GROUP, MEDIAMASK_VIDEO);
 		auto Input = Editor.OpenInputFile("4.mp4");
 		auto Output = Editor.AllocOutputFile("");
 
-		Output->EnableStream(AVMediaType::AVMEDIA_TYPE_VIDEO);
-		Output->BuildCodecContext(Input->VideoParts.Stream);
-		AVCodecContext* ovCodec = Output->VideoParts.Codec->Context;
-
-		ovCodec->width = 800;
-		ovCodec->height = 600;
-		ovCodec->pix_fmt = GetSupportedPixelFormat(ovCodec->codec, 
-			AVPixelFormat::AV_PIX_FMT_YUV420P);
-
-		Output->EnableStream(AVMediaType::AVMEDIA_TYPE_AUDIO);
-		Output->BuildCodecContext(Input->AudioParts.Stream);
-		AVCodecContext* aoCodec = Output->AudioParts.Codec->Context;
-		aoCodec->sample_fmt = AVSampleFormat::AV_SAMPLE_FMT_S16P;
-
 		// Initialize SDL
-		Sdl.Init(Output->GetMediaMask(), &op);
-		Sdl.InitVideo("Demo", ovCodec->width, ovCodec->height);
-		Sdl.InitAudio(
-			aoCodec->sample_rate,
-			aoCodec->frame_size,
-			aoCodec->ch_layout.nb_channels,
-			aoCodec->sample_fmt
-		);
+		Sdl.Init(Input->GetMediaMask(), &op);
+
+		if (Input->VideoParts.Stream)
+		{
+			Output->EnableStream(AVMediaType::AVMEDIA_TYPE_VIDEO);
+			Output->BuildCodecContext(Input->VideoParts.Stream);
+			AVCodecContext* ovCodec = Output->VideoParts.Codec->Context;
+
+			ovCodec->width = 800;
+			ovCodec->height = 600;
+			ovCodec->pix_fmt = GetSupportedPixelFormat(ovCodec->codec,
+				AVPixelFormat::AV_PIX_FMT_YUV420P);
+
+			Sdl.InitVideo("Demo", ovCodec->width, ovCodec->height);
+		}
+
+		if (Input->AudioParts.Stream)
+		{
+			Output->EnableStream(AVMediaType::AVMEDIA_TYPE_AUDIO);
+			Output->BuildCodecContext(Input->AudioParts.Stream);
+			AVCodecContext* aoCodec = Output->AudioParts.Codec->Context;
+			aoCodec->sample_fmt = AVSampleFormat::AV_SAMPLE_FMT_S16P;
+
+			Sdl.InitAudio(
+				aoCodec->sample_rate,
+				aoCodec->frame_size,
+				aoCodec->ch_layout.nb_channels,
+				aoCodec->sample_fmt
+			);
+		}
 
 		Editor.Start();
 
