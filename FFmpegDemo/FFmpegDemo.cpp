@@ -193,72 +193,41 @@ static void MixAudio()
 }
 
 // Play video
-class OutputPlayer : public IIOHandle
+class CPlayer : public CIOPlayer, public ISdlHandle
 {
 public:
-	int ReceiveData(const AVMediaType n_eMediaType,
-		EDataType n_eDataType, void* n_Data) override
+	// 通过 CIOPlayer 继承
+	int Update() override
 	{
-		if (!n_Data) return 0;
-		// display frame
-		// ...
-		AVDebug("Output frame %d, Type %d\n", n_eMediaType, n_eDataType);
-		av_frame_free((AVFrame**)&n_Data);
-
+		FSdl::SendDisplayEvent();
 		return 0;
 	}
-};
 
-// Play video2, just test
-class CPlayer : public CIOPlayer
-{
-public:
-	void Init(unsigned int n_nMediaMask)
-	{
-		CIOPlayer::Init(n_nMediaMask);
-
-		Sdl.Init(n_nMediaMask);
-		Sdl.InitVideo("Demo", 800, 600);
-		Sdl.InitAudio(aCodec, AudioCallback, this);
-	}
-
-	// Audio callback
-	static void AudioCallback(void* n_UserData,
-		unsigned char* n_szStream, int n_nLen)
-	{
-		CPlayer* Player = (CPlayer*)n_UserData;
-		if (Player)
-			Player->AudioProc(n_szStream, n_nLen);
-	}
-
-	// Audio callback proc
-	void AudioProc(unsigned char* n_szStream, int n_nLen)
+	AVFrame* SDL_ReadFrame(AVMediaType n_eMediaType) override
 	{
 		AVFrame* Frame = nullptr;
-		int n = PopAudio(Frame);
-		if (n < 0 || !Frame) return;
 
-		Sdl.UpdateAudio(Frame, n_szStream, n_nLen);
-		av_frame_free(&Frame);
-	}
+		if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_VIDEO)
+			PopVideo(Frame);
+		else if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_AUDIO)
+			PopAudio(Frame);
 
-	// 通过 CIOPlayer 继承
-	int UpdateVideo(AVFrame* n_Frame, const double n_dTimestamp) override
-	{
-		Sdl.UpdateYUV(n_Frame);
-		return 0;
-	}
-	int UpdateAudio(AVFrame* n_Frame, const double n_dTimestamp) override
-	{
-		return 0;
-	}
-	void UpdateEvent() override
-	{
-		Sdl.Event();
+		return Frame;
 	}
 
-	FSdl Sdl;
-	AVCodecContext* aCodec = nullptr;
+	void SDL_ReadEnd(AVFrame* n_Frame) override
+	{
+		if (!n_Frame) av_frame_free(&n_Frame);
+	}
+
+	void SDL_Stop() override
+	{
+		// close SDL window
+		if (Editor) Editor->Stop();
+		ForceStop();
+	}
+
+	CEditor* Editor = nullptr;
 };
 
 static void Play()
@@ -268,6 +237,11 @@ static void Play()
 		CEditor Editor;
 		//OutputPlayer op;
 		CPlayer op;
+		FSdl Sdl;
+
+		op.Editor = &Editor;
+		// Frames will be sent to op
+		Editor.SetIoHandle(&op);
 
 		auto Input = Editor.OpenInputFile("4.mp4");
 		auto Output = Editor.AllocOutputFile("");
@@ -284,14 +258,25 @@ static void Play()
 		Output->EnableStream(AVMediaType::AVMEDIA_TYPE_AUDIO);
 		Output->BuildCodecContext(Input->AudioParts.Stream);
 		AVCodecContext* aoCodec = Output->AudioParts.Codec->Context;
-		aoCodec->sample_fmt = AVSampleFormat::AV_SAMPLE_FMT_S16;
+		aoCodec->sample_fmt = AVSampleFormat::AV_SAMPLE_FMT_S16P;
 
-		op.aCodec = aoCodec;
-
-		// Frames will be sent to op
-		Editor.SetIoHandle(&op);
+		// Initialize SDL
+		Sdl.Init(Output->GetMediaMask(), &op);
+		Sdl.InitVideo("Demo", ovCodec->width, ovCodec->height);
+		Sdl.InitAudio(
+			aoCodec->sample_rate,
+			aoCodec->frame_size,
+			aoCodec->ch_layout.nb_channels,
+			aoCodec->sample_fmt
+		);
 
 		Editor.Start();
+
+		while (!Editor.IsStop())
+		{
+			Sdl.Event();
+		}
+
 		Editor.Join();
 	}
 	catch (const std::exception& e)
@@ -481,6 +466,15 @@ int main()
 	Play();
 	//RecordAudio();
 	//RecordPCM();
+
+// 	FSdl sdl;
+// 	sdl.Init(1);
+// 	sdl.InitVideo("demo", 800, 600);
+// 
+// 	while (true)
+// 	{
+// 		if (SDL_QUIT == sdl.Event()) break;
+// 	}
 
 	auto end = std::chrono::steady_clock::now();
 	auto tt = end - start;

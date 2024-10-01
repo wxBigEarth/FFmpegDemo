@@ -1,3 +1,4 @@
+#include <vector>
 #include "Apis/Sdl.h"
 #include "Util/Debug.h"
 #include "Util/MediaMask.h"
@@ -5,13 +6,17 @@
 
 namespace avstudio
 {
+#define DISPLAY_VIDEO  (SDL_USEREVENT + 1) 
+
 	FSdl::~FSdl()
 	{
 		Release();
 	}
 
-	void FSdl::Init(const unsigned char n_nMediaMask)
+	void FSdl::Init(const unsigned char n_nMediaMask, ISdlHandle* n_Handle)
 	{
+		ThrowExceptionExpr(!n_Handle, "ISdlHandle could not be null\n");
+
 		uint32_t nFlags = 0;
 
 		if (IsCompriseMedia(n_nMediaMask, AVMediaType::AVMEDIA_TYPE_VIDEO))
@@ -21,9 +26,11 @@ namespace avstudio
 
 		int ret = SDL_Init(nFlags);
 		ThrowExceptionExpr(ret, "Fail to initialize SDL: %s.\n", SDL_GetError());
+
+		m_SdlHandle = n_Handle;
 	}
 
-	void FSdl::InitVideo(const char* n_szTitle, 
+	void FSdl::InitVideo(const char* n_szTitle,
 		const int n_nWidth, const int n_nHeight)
 	{
 		if (m_Window) return;
@@ -57,20 +64,27 @@ namespace avstudio
 		CreateTexture(SDL_PIXELFORMAT_IYUV);
 	}
 
-	void FSdl::InitAudio(AVCodecContext* n_CodecContext, 
-		SDL_AudioCallback n_Cb, void* n_Param)
+	void FSdl::InitAudio(
+		int n_nSampleRate,
+		int n_nFrameSize,
+		int n_nNbChannel,
+		AVSampleFormat n_nSampleFormat)
 	{
 		SDL_AudioSpec AudioSpec = { 0 };
 
-		AudioSpec.freq = n_CodecContext->sample_rate;
-		AudioSpec.channels = n_CodecContext->ch_layout.nb_channels;
+		AudioSpec.freq = n_nSampleRate;
+		AudioSpec.channels = n_nNbChannel;
 		AudioSpec.silence = 0;
-		AudioSpec.samples = n_CodecContext->frame_size;
-		AudioSpec.callback = n_Cb;
-		AudioSpec.userdata = n_Param;
+		AudioSpec.samples = n_nFrameSize;
+		AudioSpec.callback = AudioCallback;
+		AudioSpec.userdata = this;
 
-		switch (n_CodecContext->sample_fmt)
+		switch (n_nSampleFormat)
 		{
+		case AVSampleFormat::AV_SAMPLE_FMT_U8:
+		case AVSampleFormat::AV_SAMPLE_FMT_U8P:
+			AudioSpec.format = AUDIO_U8;
+			break;
 		case AVSampleFormat::AV_SAMPLE_FMT_S16:
 		case AVSampleFormat::AV_SAMPLE_FMT_S16P:
 			AudioSpec.format = AUDIO_S16;
@@ -90,11 +104,9 @@ namespace avstudio
 		int ret = SDL_OpenAudio(&AudioSpec, nullptr);
 		ThrowExceptionExpr(ret, "Fail to open audio: %s.\n", SDL_GetError());
 
-		m_nPlanar = av_sample_fmt_is_planar(n_CodecContext->sample_fmt) + 1;
-
-		// 计算输出的缓冲区大小
-		//out_buffer_size = av_samples_get_buffer_size(
-		// NULL, out_channels, out_nb_samples, out_sample_fmt, 1);
+		m_nChannels = AudioSpec.channels;
+		m_nPlanar = av_sample_fmt_is_planar(n_nSampleFormat);
+		m_nBytesPerSample = av_get_bytes_per_sample(n_nSampleFormat);;
 
 		Play();
 	}
@@ -120,40 +132,44 @@ namespace avstudio
 
 		SDL_memset(n_Stream, 0, n_nLen);
 
-		int nOffset = n_Frame->linesize[0] / m_nPlanar;
+		std::string sSamples;
 
-		for (size_t i = 0; i < m_nPlanar; i++)
-			SDL_MixAudio(n_Stream + nOffset * i, n_Frame->data[i], nOffset, SDL_MIX_MAXVOLUME);
+		sSamples.resize(n_nLen);
+
+		if (m_nPlanar == 0)
+		{
+			memcpy_s((char*)sSamples.c_str(), n_nLen, n_Frame->data[0], n_nLen);
+		}
+		else
+		{
+			int k = 0;
+			for (int i = 0; i < n_Frame->nb_samples; i++)
+			{
+				for (int j = 0; j < m_nChannels; j++)
+				{
+					memcpy_s((char*)sSamples.c_str() + k, m_nBytesPerSample,
+						&n_Frame->data[j][m_nBytesPerSample * i], m_nBytesPerSample);
+
+					k += m_nBytesPerSample;
+				}
+			}
+		}
+
+		SDL_MixAudio(n_Stream, (const Uint8*)sSamples.data(), n_nLen, SDL_MIX_MAXVOLUME);
 	}
 
 	const unsigned int FSdl::Event()
 	{
+		if (!m_Window) return 0;
+
 		SDL_Event Event;
-		//SDL_PollEvent(&m_Event);
 
-		//switch (m_Event.type) {
-		//case SDL_QUIT:
-		//	break;
-		//case SDL_KEYUP:
-		//	if (m_Event.key.keysym.sym == SDLK_SPACE)
-		//	{
-		//		if (IsPause())
-		//			Play();
-		//		else
-		//			Pause();
-		//	}
-		//	break;
-		//default:
-		//	break;
-		//}
-
-		SDL_PumpEvents();
-
-		if (SDL_PeepEvents(&Event, 1, SDL_GETEVENT, SDL_FIRSTEVENT, SDL_LASTEVENT) == 1)
+		while (SDL_PollEvent(&Event))
 		{
-			switch (Event.type)
-			{
+			switch (Event.type) {
 			case SDL_QUIT:
+				Release();
+				if (m_SdlHandle) m_SdlHandle->SDL_Stop();
 				break;
 			case SDL_KEYUP:
 				if (Event.key.keysym.sym == SDLK_SPACE)
@@ -164,12 +180,30 @@ namespace avstudio
 						Pause();
 				}
 				break;
+			case SDL_WINDOWEVENT:
+				if (Event.window.event == 0x0005) /* WM_SIZE */
+				{
+					SDL_GetWindowSize(m_Window, &m_Rect.w, &m_Rect.h);
+				}
+				break;
+			case DISPLAY_VIDEO:
+				VideoProc();
+				break;
 			default:
 				break;
 			}
+
+			SDL_Delay(10);
 		}
 
 		return Event.type;
+	}
+
+	void FSdl::SendDisplayEvent()
+	{
+		SDL_Event Event{};
+		Event.type = DISPLAY_VIDEO;
+		SDL_PushEvent(&Event);
 	}
 
 	void FSdl::Play()
@@ -241,6 +275,35 @@ namespace avstudio
 		m_Renderer = SDL_CreateRenderer(n_Window, -1, 0);
 		ThrowExceptionExpr(!m_Renderer,
 			"Fail to create renderer: %s.\n", SDL_GetError());
+	}
+
+	void FSdl::AudioCallback(void* n_UserData, 
+		unsigned char* n_szStream, int n_nLen)
+	{
+		FSdl* Sdl = (FSdl*)n_UserData;
+		if (Sdl) Sdl->AudioProc(n_szStream, n_nLen);
+	}
+
+	void FSdl::VideoProc()
+	{
+		if (!m_SdlHandle) return;
+
+		AVFrame* Frame = m_SdlHandle->SDL_ReadFrame(AVMediaType::AVMEDIA_TYPE_VIDEO);
+		if (!Frame) return;
+
+		UpdateYUV(Frame);
+		m_SdlHandle->SDL_ReadEnd(Frame);
+	}
+
+	void FSdl::AudioProc(unsigned char* n_szStream, int n_nLen)
+	{
+		if (!m_SdlHandle) return;
+
+		AVFrame* Frame = m_SdlHandle->SDL_ReadFrame(AVMediaType::AVMEDIA_TYPE_AUDIO);
+		if (!Frame) return;
+
+		UpdateAudio(Frame, n_szStream, n_nLen);
+		m_SdlHandle->SDL_ReadEnd(Frame);
 	}
 
 }

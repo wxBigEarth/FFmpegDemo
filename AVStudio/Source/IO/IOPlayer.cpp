@@ -1,4 +1,5 @@
 #include "IO/IOPlayer.h"
+#include "Util/Debug.h"
 
 namespace avstudio
 {
@@ -51,12 +52,7 @@ namespace avstudio
 		Join();
 
 		if (m_evStatus == EIOStatus::IO_Wait)
-			m_tVideo = std::thread(std::bind(&CIOPlayer::PlayVideo, this));
-
-		//if (m_eaStatus == EIOStatus::IO_Wait)
-		//	m_tAudio = std::thread(std::bind(&CIOPlayer::PlayAudio, this));
-
-		m_tEvent = std::thread(std::bind(&CIOPlayer::PlayerEvent, this));
+			m_tPlay = std::thread(std::bind(&CIOPlayer::PlayProc, this));
 	}
 
 	void CIOPlayer::Release()
@@ -79,19 +75,48 @@ namespace avstudio
 			m_lstAudio.erase(aitr++);
 		}
 
-		m_dPlayTime = 0;
+		m_dAudioTime = 0;
+		m_dVideoTime = 0;
+	}
+
+	int CIOPlayer::PopVideo(AVFrame*& n_Frame)
+	{
+		n_Frame = nullptr;
+		m_dVideoTime = AV_NOPTS_VALUE;
+
+		std::unique_lock<std::mutex> lock(m_mutex);
+		if (m_lstVideo.size() == 0) return -1;
+
+		n_Frame = m_lstVideo.front();
+		m_lstVideo.pop_front();
+
+		if (n_Frame)
+		{
+			m_dVideoTime = n_Frame->pts * av_q2d(n_Frame->time_base);
+			if (m_eaStatus == EIOStatus::IO_Done)
+			{
+				// If audio stream is end, update time
+				m_dAudioTime = m_dVideoTime;
+			}
+		}
+		else
+			m_evStatus = EIOStatus::IO_Done;
+
+		return 0;
 	}
 
 	int CIOPlayer::PopAudio(AVFrame*& n_Frame)
 	{
 		n_Frame = nullptr;
+
+		std::unique_lock<std::mutex> lock(m_mutex);
 		if (m_lstAudio.size() == 0) return -1;
 
 		n_Frame = m_lstAudio.front();
 		m_lstAudio.pop_front();
 
 		if (n_Frame)
-			m_dPlayTime = n_Frame->pts * av_q2d(n_Frame->time_base);
+			m_dAudioTime = n_Frame->pts * av_q2d(n_Frame->time_base);
 		else
 			m_eaStatus = EIOStatus::IO_Done;
 
@@ -100,109 +125,30 @@ namespace avstudio
 
 	void CIOPlayer::Join()
 	{
-		if (m_tVideo.joinable()) m_tVideo.join();
-		if (m_tAudio.joinable()) m_tAudio.join();
-		if (m_tEvent.joinable()) m_tEvent.join();
+		if (m_tPlay.joinable()) m_tPlay.join();
 	}
 
-	void CIOPlayer::PlayVideo()
+	void CIOPlayer::PlayProc()
 	{
 		// Both video and Audio data should be arrived
 		while (!IsAllStreamArrived())
 			std::this_thread::sleep_for(std::chrono::milliseconds(kDelay));
-
-		AVFrame* Frame = nullptr;
-		double dTimestamp = 0;
 
 		while (m_evStatus == EIOStatus::IO_Doing)
 		{
-			std::this_thread::sleep_for(std::chrono::milliseconds(kDelay));
-
-			if (!Frame)
+			if (m_dVideoTime != AV_NOPTS_VALUE)
 			{
-				std::unique_lock<std::mutex> lock(m_mutex);
+				auto delta = m_dVideoTime - m_dAudioTime;
+				if (delta > 0)
+					std::this_thread::sleep_for(
+						std::chrono::milliseconds((int)(delta * 1000)));
 
-				if (m_lstVideo.size() == 0) continue;
-
-				Frame = m_lstVideo.front();
-				m_lstVideo.pop_front();
-
-				if (!Frame)
-				{
-					m_evStatus = EIOStatus::IO_Done;
-					break;
-				}
-
-				dTimestamp = Frame->pts * av_q2d(Frame->time_base);
+				Update();
+				m_dVideoTime = AV_NOPTS_VALUE;
 			}
-
-			if (dTimestamp > m_dPlayTime) continue;
-
-			UpdateVideo(Frame, dTimestamp);
-			av_frame_free(&Frame);
+			else
+				std::this_thread::sleep_for(std::chrono::milliseconds(kDelay));
 		}
-	}
-
-	void CIOPlayer::PlayAudio()
-	{
-		// Both video and Audio data should be arrived
-		while (!IsAllStreamArrived())
-			std::this_thread::sleep_for(std::chrono::milliseconds(kDelay));
-
-		AVFrame* Frame = nullptr;
-		double dTimestamp = 0;
-
-		while (m_eaStatus == EIOStatus::IO_Doing)
-		{
-			std::this_thread::sleep_for(std::chrono::milliseconds(kDelay));
-
-			if (!Frame)
-			{
-				std::unique_lock<std::mutex> lock(m_mutex);
-
-				if (m_lstAudio.size() == 0) continue;
-
-				Frame = m_lstAudio.front();
-				m_lstAudio.pop_front();
-
-				if (!Frame)
-				{
-					m_eaStatus = EIOStatus::IO_Done;
-					break;
-				}
-
-				dTimestamp = Frame->pts * av_q2d(Frame->time_base);
-			}
-
-			if (dTimestamp > m_dPlayTime) continue;
-
-			UpdateAudio(Frame, dTimestamp);
-			av_frame_free(&Frame);
-		}
-	}
-
-	void CIOPlayer::PlayerEvent()
-	{
-		// Both video and Audio data should be arrived
-		while (!IsAllStreamArrived())
-			std::this_thread::sleep_for(std::chrono::milliseconds(kDelay));
-
-		while (m_eaStatus != EIOStatus::IO_Done ||
-			m_evStatus != EIOStatus::IO_Done)
-		{
-			UpdateEvent();
-			std::this_thread::sleep_for(std::chrono::milliseconds(kDelay));
-		}
-	}
-
-	void CIOPlayer::UpdateTime()
-	{
-
-	}
-
-	void CIOPlayer::UpdateEvent()
-	{
-
 	}
 
 }

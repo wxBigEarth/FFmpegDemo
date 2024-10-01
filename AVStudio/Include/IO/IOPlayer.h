@@ -40,34 +40,31 @@ namespace avstudio
 		// Release memory
 		void Release() override;
 
+		// Read video frame from list
+		int PopVideo(AVFrame*& n_Frame);
+		// Read audio frame from list
 		int PopAudio(AVFrame*& n_Frame);
 
 	protected:
 		void Join();
 
-		void PlayVideo();
-		void PlayAudio();
-		void PlayerEvent();
+		void PlayProc();
 
-		// Override this method to display video picture
-		virtual int UpdateVideo(AVFrame* n_Frame, const double n_dTimestamp) = 0;
-		// Override this method to play audio
-		virtual int UpdateAudio(AVFrame* n_Frame, const double n_dTimestamp) = 0;
-		virtual void UpdateTime();
-		virtual void UpdateEvent();
+		// Will be trigger when it should update video
+		virtual int Update() = 0;
 
 	protected:
-		std::thread m_tVideo;
-		std::thread m_tAudio;
-		std::thread m_tEvent;
+		std::thread m_tPlay;
 
 		std::list<AVFrame*> m_lstVideo;
 		std::list<AVFrame*> m_lstAudio;
 
-		std::mutex m_mutex;
+		std::mutex			m_mutex;
 
-		// The time length since playing
-		double		m_dPlayTime = 0;
+		// The audio time length since playing
+		double				m_dAudioTime = 0;
+		// The video time length since playing
+		double				m_dVideoTime = 0;
 	};
 }
 

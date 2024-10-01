@@ -50,6 +50,10 @@ namespace avstudio
 
 	void IIOHandle::Release()
 	{
+	}
+
+	void IIOHandle::ForceStop()
+	{
 		m_evStatus = EIOStatus::IO_Done;
 		m_eaStatus = EIOStatus::IO_Done;
 	}
