@@ -1,5 +1,6 @@
 #ifndef __CODECCONTEXT_H__
 #define __CODECCONTEXT_H__
+#include <memory>
 #include <vector>
 #include <string>
 #include <functional>
@@ -104,8 +105,9 @@ namespace avstudio
 	extern "C"
 	{
 		// return value: 0: the same format
-		int CompareCodecFormat(FCodecContext* n_InputCodecContext,
-			FCodecContext* n_OutputCodecContext);
+		int CompareCodecFormat(
+			std::shared_ptr<FCodecContext> n_InputCodecContext,
+			std::shared_ptr<FCodecContext> n_OutputCodecContext);
 
 		// Addition setting for codec context
 		void CodecContextAddition(AVCodecContext* n_CodecContext);

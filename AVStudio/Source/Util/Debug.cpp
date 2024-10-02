@@ -17,10 +17,10 @@ namespace avstudio
 
 	char szLogBuffer[BUFFERSIZE_2M] = { 0 };
 
-	void logCallback(void* avcl, int level, const char* fmt, va_list vl)
+	static void logCallback(void* avcl, int level, const char* fmt, va_list vl)
 	{
 		memset(szLogBuffer, 0, sizeof(szLogBuffer));
-		vsnprintf_s(szLogBuffer, sizeof(szLogBuffer), fmt, vl);
+		std::vsnprintf(szLogBuffer, sizeof(szLogBuffer), fmt, vl);
 
 		//printf_s(szLogBuffer);
 		std::cout << szLogBuffer;
@@ -36,12 +36,14 @@ namespace avstudio
 		std::string sResult;
 		sResult.resize(AV_ERROR_MAX_STRING_SIZE);
 
-		av_make_error_string((char*)sResult.c_str(), AV_ERROR_MAX_STRING_SIZE, n_nErrCode);
+		av_make_error_string((char*)sResult.c_str(), 
+			AV_ERROR_MAX_STRING_SIZE, n_nErrCode);
 
 		return sResult;
 	}
 
-	std::string StringFormat(const char* n_szFunction, int n_nLine, const char* n_szFormat, ...)
+	std::string StringFormat(const char* n_szFunction, 
+		int n_nLine, const char* n_szFormat, ...)
 	{
 		std::string sResult;
 		char szBuffer[BUFFERSIZE_256] = { 0 };
@@ -55,7 +57,7 @@ namespace avstudio
 			va_start(args, n_szFormat);
 
 			char szContent[BUFFERSIZE_512] = { 0 };
-			vsnprintf_s(szContent, BUFFERSIZE_512, n_szFormat, args);
+			std::vsnprintf(szContent, BUFFERSIZE_512, n_szFormat, args);
 			sResult.append(szContent);
 
 			va_end(args);

@@ -10,7 +10,7 @@
 namespace avstudio
 {
 	// Default group id
-	constexpr auto kNO_GROUP = 0xFFFFFFFF;
+	constexpr unsigned char kNO_GROUP = 0xFF;
 
 	enum class ECtxType
 	{
@@ -36,14 +36,14 @@ namespace avstudio
 		* Default value of id is kNO_GROUP. At this time, Input contexts will
 		* run at first in turn.
 		*/
-		void SetGroupId(const unsigned int n_nId);
+		void SetGroupId(const unsigned char n_nId);
 		// Get group id
-		const unsigned int GetGroupId() const;
+		const unsigned char GetGroupId() const;
 
 		// Set index in the group. It will auto set by AVStudio.dll
-		void SetGroupIndex(const unsigned int n_nIndex);
+		void SetGroupIndex(const unsigned char n_nIndex);
 		// Get index in the group
-		const unsigned int GetGroupIndex() const;
+		const unsigned char GetGroupIndex() const;
 
 		// Is current context valid
 		const bool IsValid() const;
@@ -64,18 +64,19 @@ namespace avstudio
 		bool CheckMedia(AVMediaType n_eMediaType) const;
 
 		// Build codec context for output context with stream of input context
-		FCodecContext* BuildCodecContext(AVStream* n_Stream);
+		std::shared_ptr<FCodecContext> BuildCodecContext(AVStream* n_Stream);
 		// Build encode codec context
-		FCodecContext* BuildCodecContext(AVCodecID n_eCodecID,
+		std::shared_ptr<FCodecContext> BuildCodecContext(AVCodecID n_eCodecID,
 			AVCodecContext* n_InputCodecContext = nullptr);
 		// Build encode codec context with default codec id of output context
-		FCodecContext* BuildDefaultCodecContext(AVMediaType n_eMediaType, 
+		std::shared_ptr<FCodecContext> BuildDefaultCodecContext(
+			AVMediaType n_eMediaType,
 			AVCodecContext* n_InputCodecContext = nullptr);
 
 		// Get stream
 		AVStream* FindStream(AVMediaType n_eMediaType);
 		// Build streams for output context with input context info
-		void BuildStream(FWorkShop* n_Input, 
+		void BuildStream(std::shared_ptr<FWorkShop> n_Input,
 			AVMediaType n_eMediaType = AVMediaType::AVMEDIA_TYPE_UNKNOWN);
 		// Build streams for output context with AVCodecContext
 		// If n_CodecContext comes from output context, it should be open first
@@ -83,21 +84,23 @@ namespace avstudio
 			AVMediaType n_eMediaType = AVMediaType::AVMEDIA_TYPE_UNKNOWN);
 
 		// Open codec context, if it's output context, it will create stream
-		void OpenCodecContext(AVMediaType n_eMediaType = AVMediaType::AVMEDIA_TYPE_UNKNOWN);
-
-		// Compare the output codec, check weather it should be decode
-		void CheckForDecoding(FWorkShop* n_Output,
+		void OpenCodecContext(
 			AVMediaType n_eMediaType = AVMediaType::AVMEDIA_TYPE_UNKNOWN);
 
-		// Set if input context should be decoded, just deocding without convert frame
+		// Compare the output codec, check weather it should be decode
+		void CheckForDecoding(std::shared_ptr<FWorkShop> n_Output,
+			AVMediaType n_eMediaType = AVMediaType::AVMEDIA_TYPE_UNKNOWN);
+
+		// Set if input context should be decoded, just decoding without convert frame
 		void SetDecodeFlag(int n_nFlag, 
 			AVMediaType n_eMediaType = AVMediaType::AVMEDIA_TYPE_UNKNOWN);
 
 		// Set filter
-		void SetupFilter(AVMediaType n_eMediaType, IFilter* n_Filter);
+		void SetupFilter(AVMediaType n_eMediaType, 
+			std::shared_ptr<IFilter> n_Filter);
 
-		// Create Audio Fifo buffer
-		void CreateAudioFifo(FCodecContext* n_AudioCodec);
+		// Create Audio FIFO buffer
+		void CreateAudioFifo(std::shared_ptr<FCodecContext> n_AudioCodec);
 
 		// Adjust pts for AVFrame that decoded from input context
 		int64_t AdjustPts(int64_t n_nPts, AVMediaType n_eMediaType);
@@ -147,24 +150,24 @@ namespace avstudio
 		};
 
 	protected:
-		ECtxType	m_eCtxType = ECtxType::CT_Input;
+		ECtxType		m_eCtxType = ECtxType::CT_Input;
 
 		// Selected streams
-		unsigned char m_nMediaMask = 0;
+		unsigned char	m_nMediaMask = 0;
 
 		// Input contexts with same id will run at the same time 
 		// if it's not -1
-		unsigned int m_nGroupId = kNO_GROUP;
+		unsigned char	m_nGroupId = kNO_GROUP;
 		// Index in the group
-		unsigned int m_nGroupIndex = 0;
+		unsigned char	m_nGroupIndex = 0;
+
+		// Count of video AVFrame pts
+		int64_t			m_nVideoPts = 0;
+		// Count of audio AVFrame pts
+		int64_t			m_nAudioPts = 0;
 
 		// For input context only, used to split input context
 		std::vector<FFragment> m_vFragments;
-
-		// Count of video AVFrame pts
-		int64_t		m_nVideoPts = 0;
-		// Count of audio AVFrame pts
-		int64_t		m_nAudioPts = 0;
 
 		std::function<void(FWorkShop*)> m_funcMiddleware = nullptr;
 	};

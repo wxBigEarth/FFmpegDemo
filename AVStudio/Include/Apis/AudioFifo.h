@@ -1,6 +1,6 @@
 #ifndef __AUDIOFIFO_H__
 #define __AUDIOFIFO_H__
-
+#include <memory>
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -19,7 +19,7 @@ namespace avstudio
 		~FAudioFifo();
 
 		/*
-		* Alloc audio fifo buffer
+		* Alloc audio FIFO buffer
 		* parameters:
 		*	const AVSampleFormat& n_eSampleFormat:
 		*		Sample format of the output frame
@@ -46,7 +46,7 @@ namespace avstudio
 		void Pop(AVFrame* n_Frame);
 
 		// Could read frame or not
-		bool IsReadable();
+		bool IsReadable() const;
 
 		// Get parameters
 		int				GetChannels()		const { return m_nChannels; }
@@ -64,6 +64,7 @@ namespace avstudio
 		int				m_nSamples = 0;
 	};
 
-	void MoveAudioFifoData(FAudioFifo* n_Src, FAudioFifo* n_Des);
+	void MoveAudioFifoData(
+		std::shared_ptr<FAudioFifo> n_Src, std::shared_ptr<FAudioFifo> n_Des);
 }
 #endif // !__AUDIOFIFO_H__

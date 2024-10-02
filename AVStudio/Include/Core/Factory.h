@@ -10,11 +10,10 @@ namespace avstudio
 	{
 	public:
 		CFactory() = default;
+		CFactory(std::shared_ptr<FWorkShop> n_Output);
 		~CFactory();
 
-		int Init(FWorkShop* n_Input, FWorkShop* n_Output);
-
-		FWorkShop* Input();
+		std::shared_ptr<FWorkShop> Input();
 
 		/*
 		* For input context, Before start, do something
@@ -35,7 +34,7 @@ namespace avstudio
 		// Flush FFmpeg buffer queue while ending
 		void Flush();
 
-		void SetIoHandle(IIOHandle* n_Handle);
+		void SetIoHandle(std::shared_ptr<IIOHandle> n_Handle);
 
 		const bool IsEnd() const;
 
@@ -59,18 +58,18 @@ namespace avstudio
 		AVFrame* AllocAudioFrame(int n_nFrameSize);
 
 	protected:
+		std::shared_ptr<FWorkShop>	m_Input = nullptr;
+		// Point to output context
+		std::shared_ptr<FWorkShop>	m_Output = nullptr;
+		// Point to IO handle.
+		std::shared_ptr<IIOHandle>	m_IoHandle = nullptr;
+
 		// For Demuxing
 		AVPacket*	m_Packet = nullptr;
 		// Video frame, for converting
 		AVFrame*	m_vFrame = nullptr;
 		// Audio frame, for converting
 		AVFrame*	m_aFrame = nullptr;
-
-		FWorkShop*	m_Input = nullptr;
-		FWorkShop*	m_Output = nullptr;
-
-		// Data IO.
-		IIOHandle*	m_IoHandle = nullptr;
 
 		// Indicate if it's end
 		bool		m_bIsEnd = false;

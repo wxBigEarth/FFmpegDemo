@@ -30,13 +30,15 @@ namespace avstudio
 		int64_t			Duration = 1;
 
 		AVStream*		Stream = nullptr;
-		// Video codec
-		FCodecContext*	Codec = nullptr;
+
+		// Codec context
+		std::shared_ptr<FCodecContext>	Codec = nullptr;
 		// Point to Filter instance
-		IFilter*		Filter = nullptr;
-		FSwsScale*		Sws = nullptr;
-		FResample*		Resample = nullptr;
-		FAudioFifo*		FiFo = nullptr;
+		std::shared_ptr<IFilter>		Filter = nullptr;
+
+		std::shared_ptr<FSwsScale>		Sws = nullptr;
+		std::shared_ptr<FResample>		Resample = nullptr;
+		std::shared_ptr<FAudioFifo>		FiFo = nullptr;
 
 		void Release();
 

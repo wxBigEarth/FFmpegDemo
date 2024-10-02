@@ -11,33 +11,8 @@ namespace avstudio
 		Duration = 0;
 
 		Stream = nullptr;
-		Filter = nullptr;
 
 		DesireCodecId = AVCodecID::AV_CODEC_ID_NONE;
-
-		if (Codec)
-		{
-			delete Codec;
-			Codec = nullptr;
-		}
-
-		if (Sws)
-		{
-			delete Sws;
-			Sws = nullptr;
-		}
-
-		if (Resample)
-		{
-			delete Resample;
-			Resample = nullptr;
-		}
-
-		if (FiFo)
-		{
-			delete FiFo;
-			FiFo = nullptr;
-		}
 	}
 
 	AVCodecID FLatheParts::CodecID() const

@@ -5,23 +5,21 @@
 
 namespace avstudio
 {
+	CFactory::CFactory(std::shared_ptr<FWorkShop> n_Output)
+	{
+		m_Output = n_Output;
+	}
+
 	CFactory::~CFactory()
 	{
 		Release();
 	}
 
-	int CFactory::Init(FWorkShop* n_Input, FWorkShop* n_Output)
+	std::shared_ptr<FWorkShop> CFactory::Input()
 	{
-		if (!n_Input || !n_Output) return -1;
+		if (!m_Input)
+			m_Input = std::make_shared<FWorkShop>();
 
-		m_Input = n_Input;
-		m_Output = n_Output;
-
-		return 0;
-	}
-
-	FWorkShop* CFactory::Input()
-	{
 		return m_Input;
 	}
 
@@ -146,7 +144,7 @@ namespace avstudio
 		m_bIsEnd = true;
 	}
 
-	void CFactory::SetIoHandle(IIOHandle* n_Handle)
+	void CFactory::SetIoHandle(std::shared_ptr<IIOHandle> n_Handle)
 	{
 		m_IoHandle = n_Handle;
 	}
@@ -158,12 +156,6 @@ namespace avstudio
 
 	void CFactory::Release()
 	{
-		if (m_Input)
-		{
-			delete m_Input;
-			m_Input = nullptr;
-		}
-
 		m_bIsLastItem = false;
 		m_bIsLastGroup = false;
 

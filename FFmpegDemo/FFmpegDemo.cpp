@@ -176,12 +176,12 @@ static void MixAudio()
 		Output->OpenCodecContext(AVMediaType::AVMEDIA_TYPE_AUDIO);
 
 		// Create filter
-		CAudioMixFilter Filter;
-		Filter.Init(Output->AudioParts.Codec->Context);
-		Filter.InitGraph(2);
+		auto Filter = std::make_shared<CAudioMixFilter>();
+		Filter->Init(Output->AudioParts.Codec->Context);
+		Filter->InitGraph(2);
 
-		Input->SetupFilter(AVMediaType::AVMEDIA_TYPE_AUDIO, &Filter);
-		Input2->SetupFilter(AVMediaType::AVMEDIA_TYPE_AUDIO, &Filter);
+		Input->SetupFilter(AVMediaType::AVMEDIA_TYPE_AUDIO, Filter);
+		Input2->SetupFilter(AVMediaType::AVMEDIA_TYPE_AUDIO, Filter);
 
 		Editor.Start();
 		Editor.Join();
@@ -236,19 +236,19 @@ static void Play()
 	{
 		CEditor Editor;
 		//OutputPlayer op;
-		CPlayer op;
+		auto op = std::make_shared<CPlayer>();
 		FSdl Sdl;
 
-		op.Editor = &Editor;
+		op->Editor = &Editor;
 		// Frames will be sent to op
-		Editor.SetIoHandle(&op);
+		Editor.SetIoHandle(op);
 
 		//auto Input = Editor.OpenInputFile("4.mp4", kNO_GROUP, MEDIAMASK_VIDEO);
 		auto Input = Editor.OpenInputFile("4.mp4");
 		auto Output = Editor.AllocOutputFile("");
 
 		// Initialize SDL
-		Sdl.Init(Input->GetMediaMask(), &op);
+		Sdl.Init(Input->GetMediaMask(), op);
 
 		if (Input->VideoParts.Stream)
 		{
@@ -407,7 +407,7 @@ static void RecordPCM()
 
 		// Video Codec Context
 		auto vCodec = FCodecContext::FindDecodeCodec(AVCodecID::AV_CODEC_ID_RAWVIDEO);
-		Input->VideoParts.Codec = new FCodecContext();
+		Input->VideoParts.Codec = std::make_shared<FCodecContext>();
 
 		AVCodecContext* InputVideoCodec = Input->VideoParts.Codec->Alloc(vCodec);
 		InputVideoCodec->width = 640;
@@ -423,7 +423,7 @@ static void RecordPCM()
 
 		// Audio Codec Context
 		auto aCodec = FCodecContext::FindDecodeCodec(AVCodecID::AV_CODEC_ID_FIRST_AUDIO);
-		Input->AudioParts.Codec = new FCodecContext();
+		Input->AudioParts.Codec = std::make_shared<FCodecContext>();
 
 		AVCodecContext* InputAudioCodec = Input->AudioParts.Codec->Alloc(aCodec);
 		InputAudioCodec->bit_rate = 192000;
@@ -472,18 +472,9 @@ int main()
 	//Merge();
 	//DetachAudioStream();
 	//MixAudio();
-	Play();
+	//Play();
 	//RecordAudio();
 	//RecordPCM();
-
-// 	FSdl sdl;
-// 	sdl.Init(1);
-// 	sdl.InitVideo("demo", 800, 600);
-// 
-// 	while (true)
-// 	{
-// 		if (SDL_QUIT == sdl.Event()) break;
-// 	}
 
 	auto end = std::chrono::steady_clock::now();
 	auto tt = end - start;

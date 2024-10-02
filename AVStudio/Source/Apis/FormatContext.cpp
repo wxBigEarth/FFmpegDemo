@@ -12,6 +12,8 @@ namespace avstudio
 	AVFormatContext* FFormatContext::OpenInputFile(const std::string& n_sFile, 
 		const AVInputFormat* n_InputFormat, AVDictionary* n_Options)
 	{
+		if (n_sFile.empty()) return Context;
+
 		int ret = avformat_open_input(&Context, n_sFile.c_str(), 
 			n_InputFormat, &n_Options);
 		ThrowExceptionCodeExpr(ret < 0, ret, "Fail to open input file.");

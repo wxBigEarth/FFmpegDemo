@@ -18,7 +18,8 @@ namespace avstudio
 	std::string ErrorCode2String(int n_nErrCode);
 
 	// format string with function name and line
-	std::string StringFormat(const char* n_szFunction, int n_nLine, const char* n_szFormat, ...);
+	std::string StringFormat(const char* n_szFunction, 
+		int n_nLine, const char* n_szFormat, ...);
 
 	void DebugTimestamp(const AVMediaType n_eMediaType,
 		const int64_t n_nPts, const AVRational& n_Timebase);

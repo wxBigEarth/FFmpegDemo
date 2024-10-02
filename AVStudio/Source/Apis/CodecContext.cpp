@@ -385,8 +385,9 @@ namespace avstudio
 	}
 
 	//////////////////////////////////////////////////////////////////////
-	int CompareCodecFormat(FCodecContext* n_InputCodecContext,
-		FCodecContext* n_OutputCodecContext)
+	int CompareCodecFormat(
+		std::shared_ptr<FCodecContext> n_InputCodecContext,
+		std::shared_ptr<FCodecContext> n_OutputCodecContext)
 	{
 		int ret = 0;
 

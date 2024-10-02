@@ -10,7 +10,8 @@ namespace avstudio
 		Release();
 	}
 
-	void FSdl::Init(const unsigned char n_nMediaMask, ISdlHandle* n_Handle)
+	void FSdl::Init(const unsigned char n_nMediaMask, 
+		std::shared_ptr<ISdlHandle> n_Handle)
 	{
 		ThrowExceptionExpr(!n_Handle, "ISdlHandle could not be null\n");
 

@@ -85,14 +85,15 @@ namespace avstudio
 		Pop(n_Frame->data, n_Frame->nb_samples);
 	}
 
-	bool FAudioFifo::IsReadable()
+	bool FAudioFifo::IsReadable() const
 	{
 		int nSize = Size();
 
 		return nSize > 0 && m_nSamples <= nSize;
 	}
 
-	void MoveAudioFifoData(FAudioFifo* n_Src, FAudioFifo* n_Des)
+	void MoveAudioFifoData(
+		std::shared_ptr<FAudioFifo> n_Src, std::shared_ptr<FAudioFifo> n_Des)
 	{
 		if (!n_Src || !n_Des) return;
 

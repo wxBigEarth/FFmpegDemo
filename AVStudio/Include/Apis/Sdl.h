@@ -1,6 +1,7 @@
 #ifndef __SDL_H__
 #define __SDL_H__
 #include <functional>
+#include <memory>
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -36,7 +37,8 @@ namespace avstudio
 		FSdl() = default;
 		~FSdl();
 
-		void Init(const unsigned char n_nMediaMask, ISdlHandle* n_Handle);
+		void Init(const unsigned char n_nMediaMask, 
+			std::shared_ptr<ISdlHandle> n_Handle);
 
 		// Create video render window
 		// Just support YUV pixel format
@@ -110,8 +112,6 @@ namespace avstudio
 		SDL_Texture*	m_Texture = nullptr;
 		SDL_Rect		m_Rect = { 0 };
 
-		ISdlHandle*		m_SdlHandle = nullptr;
-
 		unsigned char	m_nMediaMask = 0;
 		// Event that display video
 		unsigned int	m_nDisplayEvent = 0;
@@ -124,6 +124,8 @@ namespace avstudio
 		int				m_nBytesPerSample = 1;
 		// 0: play; 1: pause
 		int				m_nPause = 0;
+
+		std::shared_ptr<ISdlHandle>	m_SdlHandle = nullptr;
 	};
 }
 
