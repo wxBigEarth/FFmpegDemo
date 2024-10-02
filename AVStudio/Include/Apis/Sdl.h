@@ -48,6 +48,18 @@ namespace avstudio
 		void InitVideo(const void* n_WinId);
 
 		// Init audio parameter
+		/*
+		* Init audio parameter
+		* The supported AVSampleFormat: 
+		* 	AVSampleFormat::AV_SAMPLE_FMT_U8
+		*	AVSampleFormat::AV_SAMPLE_FMT_U8P
+		*	AVSampleFormat::AV_SAMPLE_FMT_S16
+		*	AVSampleFormat::AV_SAMPLE_FMT_S16P
+		*	AVSampleFormat::AV_SAMPLE_FMT_S32
+		*	AVSampleFormat::AV_SAMPLE_FMT_S32P
+		*	AVSampleFormat::AV_SAMPLE_FMT_FLT
+		*	AVSampleFormat::AV_SAMPLE_FMT_FLTP
+		*/
 		void InitAudio(
 			int n_nSampleRate,
 			int n_nFrameSize,
@@ -55,19 +67,19 @@ namespace avstudio
 			AVSampleFormat n_nSampleFormat);
 
 		// Input YUV frame to render on the window
-		void UpdateYUV(AVFrame* n_Frame);
+		void UpdateVideo(AVFrame* n_Frame);
 		// Input audio frame to play audio
 		// It's called by SDL_AudioCallback in InitAudio() function
-		void UpdateAudio(AVFrame* n_Frame, 
+		void UpdateAudio(AVFrame* n_Frame,
 			unsigned char* n_Stream, int n_nLen) const;
 
 		// SDL event, should call in the same thread as InitVieo
 		const unsigned int Event();
 		// Send event to display video
-		void SendDisplayEvent();
+		void SendDisplayEvent() const;
 
 		// Video callback PROC
-		void UpdateVideo();
+		void VideoProc();
 
 		// Play
 		void Play();
@@ -90,7 +102,7 @@ namespace avstudio
 			unsigned char* n_szStream, int n_nLen);
 
 		// Audio callback PROC
-		void UpdateAudio(unsigned char* n_szStream, int n_nLen);
+		void AudioProc(unsigned char* n_szStream, int n_nLen);
 
 	protected:
 		SDL_Window*		m_Window = nullptr;

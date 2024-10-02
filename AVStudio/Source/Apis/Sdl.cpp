@@ -1,4 +1,3 @@
-#include <vector>
 #include "Apis/Sdl.h"
 #include "Util/Debug.h"
 #include "Util/MediaMask.h"
@@ -29,7 +28,7 @@ namespace avstudio
 		m_nMediaMask = n_nMediaMask;
 
 		// Callback function to update video
-		m_SdlHandle->SetUpdateCallback(std::bind(&FSdl::UpdateVideo, this));
+		m_SdlHandle->SetUpdateCallback(std::bind(&FSdl::VideoProc, this));
 	}
 
 	void FSdl::InitVideo(const char* n_szTitle,
@@ -113,6 +112,8 @@ namespace avstudio
 			AudioSpec.format = AUDIO_F32;
 			break;
 		default:
+			ThrowException("SDL do not support %s\n", 
+				av_get_sample_fmt_name(n_nSampleFormat));
 			break;
 		}
 
@@ -126,7 +127,7 @@ namespace avstudio
 		Play();
 	}
 
-	void FSdl::UpdateYUV(AVFrame* n_Frame)
+	void FSdl::UpdateVideo(AVFrame* n_Frame)
 	{
 		if (!m_Texture || !m_Renderer || m_nPause || !n_Frame) return;
 
@@ -140,7 +141,7 @@ namespace avstudio
 		SDL_RenderPresent(m_Renderer);
 	}
 
-	void FSdl::UpdateAudio(AVFrame* n_Frame, 
+	void FSdl::UpdateAudio(AVFrame* n_Frame,
 		unsigned char* n_Stream, int n_nLen) const
 	{
 		if (m_nPause || !n_Frame) return;
@@ -203,7 +204,7 @@ namespace avstudio
 				break;
 			default:
 				if (m_nDisplayEvent == Event.type && m_Window)
-					UpdateVideo();
+					VideoProc();
 				break;
 			}
 
@@ -213,21 +214,21 @@ namespace avstudio
 		return Event.type;
 	}
 
-	void FSdl::SendDisplayEvent()
+	void FSdl::SendDisplayEvent() const
 	{
 		SDL_Event Event{};
 		Event.type = m_nDisplayEvent;
 		SDL_PushEvent(&Event);
 	}
 
-	void FSdl::UpdateVideo()
+	void FSdl::VideoProc()
 	{
 		if (!m_SdlHandle || !m_Window) return;
 
 		AVFrame* Frame = m_SdlHandle->SDL_ReadFrame(AVMediaType::AVMEDIA_TYPE_VIDEO);
 		if (!Frame) return;
 
-		UpdateYUV(Frame);
+		UpdateVideo(Frame);
 		m_SdlHandle->SDL_ReadEnd(Frame);
 	}
 
@@ -306,10 +307,10 @@ namespace avstudio
 		unsigned char* n_szStream, int n_nLen)
 	{
 		FSdl* Sdl = (FSdl*)n_UserData;
-		if (Sdl) Sdl->UpdateAudio(n_szStream, n_nLen);
+		if (Sdl) Sdl->AudioProc(n_szStream, n_nLen);
 	}
 
-	void FSdl::UpdateAudio(unsigned char* n_szStream, int n_nLen)
+	void FSdl::AudioProc(unsigned char* n_szStream, int n_nLen)
 	{
 		if (!m_SdlHandle) return;
 

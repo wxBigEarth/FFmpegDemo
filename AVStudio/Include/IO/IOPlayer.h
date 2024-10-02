@@ -63,8 +63,12 @@ namespace avstudio
 
 		// The audio time length since playing
 		double				m_dAudioTime = 0;
+		// The audio time base to double
+		double				m_dAudioQ = 0;
 		// The video time length since playing
 		double				m_dVideoTime = 0;
+		// The video time base to double
+		double				m_dVideoQ = 0;
 	};
 }
 

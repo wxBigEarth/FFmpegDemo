@@ -269,7 +269,7 @@ static void Play()
 			Output->EnableStream(AVMediaType::AVMEDIA_TYPE_AUDIO);
 			Output->BuildCodecContext(Input->AudioParts.Stream);
 			AVCodecContext* aoCodec = Output->AudioParts.Codec->Context;
-			aoCodec->sample_fmt = AVSampleFormat::AV_SAMPLE_FMT_S16P;
+			//aoCodec->sample_fmt = AVSampleFormat::AV_SAMPLE_FMT_S16P;
 
 			Sdl.InitAudio(
 				aoCodec->sample_rate,
