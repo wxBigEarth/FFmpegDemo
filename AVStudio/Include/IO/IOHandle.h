@@ -9,7 +9,7 @@ namespace avstudio
 	class IIOHandle
 	{
 	public:
-		~IIOHandle();
+		virtual ~IIOHandle();
 
 		/*
 		* Init handle
@@ -45,7 +45,10 @@ namespace avstudio
 		const bool IsAllStreamDone() const;
 
 		// Set callback function to do with the data
-		void SetupCallback(std::function<void(FDataItem*)> n_func);
+		void SetupDateCallback(std::function<void(FDataItem*)> n_func);
+
+		// Set callback function when stopped, Set by AVStudio
+		void SetupStopCallback(std::function<void()> n_func);
 
 		// Set if the coming data should be clone
 		void SetDataClone(bool n_bClone);
@@ -79,7 +82,9 @@ namespace avstudio
 		bool			m_bClone = true;
 
 		// Callback when read data
-		std::function<void(FDataItem*)> m_func = nullptr;
+		std::function<void(FDataItem*)> m_fnReadData = nullptr;
+		// Callback when force stop
+		std::function<void()>			m_fnStop = nullptr;
 	};
 }
 

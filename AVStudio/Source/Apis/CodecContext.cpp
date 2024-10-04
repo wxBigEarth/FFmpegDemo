@@ -80,7 +80,7 @@ namespace avstudio
 		Context->framerate = n_CodecContext->framerate;
 	}
 
-	void FCodecContext::ConfiguraHwAccel()
+	void FCodecContext::ConfigureHwAccel()
 	{
 		if (m_Setting && m_Setting->bEnableHwAccel &&
 			Context->codec_type == AVMediaType::AVMEDIA_TYPE_VIDEO &&

@@ -36,7 +36,7 @@ namespace avstudio
 
 					VideoParts.Codec->Alloc(VideoCodec, m_Setting);
 					VideoParts.Codec->CopyCodecParameter(VideoParts.Stream);
-					VideoParts.Codec->ConfiguraHwAccel();
+					VideoParts.Codec->ConfigureHwAccel();
 
 					CombineMedia(m_nMediaMask, AVMediaType::AVMEDIA_TYPE_VIDEO);
 				}
@@ -239,39 +239,47 @@ namespace avstudio
 		if (n_Stream->codecpar->codec_type == AVMediaType::AVMEDIA_TYPE_VIDEO && 
 			IsCompriseMedia(m_nMediaMask, AVMediaType::AVMEDIA_TYPE_VIDEO))
 		{
-			VideoParts.Codec = std::make_shared<FCodecContext>();
-			auto ctx = VideoParts.Codec->Alloc(Codec, m_Setting);
-			VideoParts.Codec->CopyCodecParameter(n_Stream);
-			VideoParts.Codec->ConfiguraHwAccel();
-
-			ctx->framerate = n_Stream->r_frame_rate;
-			// if ctx->framerate.num too large, first frame will be gray
-			if (ctx->framerate.num > 60)
-				ctx->framerate = AVRational{ 25, 1 };
-
-			ctx->time_base = n_Stream->time_base;
-			ctx->gop_size = 12;
-
-			// enable show Thumbnail
-			if (IsValid() &&
-				Fmt.Context->oformat && 
-				(Fmt.Context->oformat->flags & AVFMT_GLOBALHEADER))
-				ctx->flags = AV_CODEC_FLAG_GLOBAL_HEADER;
-
 			Result = VideoParts.Codec;
+			if (!Result)
+			{
+				VideoParts.Codec = std::make_shared<FCodecContext>();
+				auto ctx = VideoParts.Codec->Alloc(Codec, m_Setting);
+				VideoParts.Codec->CopyCodecParameter(n_Stream);
 
-			if (m_funcMiddleware) m_funcMiddleware(Result->Context);
+				ctx->framerate = n_Stream->r_frame_rate;
+				// if ctx->framerate.num too large, first frame will be gray
+				if (ctx->framerate.num > 60)
+					ctx->framerate = AVRational{ 25, 1 };
+
+				ctx->time_base = n_Stream->time_base;
+				ctx->gop_size = 12;
+
+				// enable show Thumbnail
+				if (IsValid() &&
+					Fmt.Context->oformat &&
+					(Fmt.Context->oformat->flags & AVFMT_GLOBALHEADER))
+					ctx->flags = AV_CODEC_FLAG_GLOBAL_HEADER;
+
+				Result = VideoParts.Codec;
+
+				if (m_funcMiddleware) m_funcMiddleware(Result->Context);
+				VideoParts.Codec->ConfigureHwAccel();
+			}
 		}
 		else if (n_Stream->codecpar->codec_type == AVMediaType::AVMEDIA_TYPE_AUDIO && 
 			IsCompriseMedia(m_nMediaMask, AVMediaType::AVMEDIA_TYPE_AUDIO))
 		{
-			AudioParts.Codec = std::make_shared<FCodecContext>();
-			AudioParts.Codec->Alloc(Codec, m_Setting);
-			AudioParts.Codec->CopyCodecParameter(n_Stream);
-
 			Result = AudioParts.Codec;
+			if (!Result)
+			{
+				AudioParts.Codec = std::make_shared<FCodecContext>();
+				AudioParts.Codec->Alloc(Codec, m_Setting);
+				AudioParts.Codec->CopyCodecParameter(n_Stream);
 
-			if (m_funcMiddleware) m_funcMiddleware(Result->Context);
+				Result = AudioParts.Codec;
+
+				if (m_funcMiddleware) m_funcMiddleware(Result->Context);
+			}
 		}
 
 		return Result;
@@ -313,10 +321,9 @@ namespace avstudio
 						n_InputCodecContext->frame_size;
 				}
 
+				if (m_funcMiddleware) m_funcMiddleware(Result->Context);
 				CodecContextAddition(ctx);
 			}
-
-			if (m_funcMiddleware) m_funcMiddleware(Result->Context);
 		}
 		else if (Codec->type == AVMediaType::AVMEDIA_TYPE_VIDEO && 
 			IsCompriseMedia(m_nMediaMask, Codec->type))
@@ -351,10 +358,11 @@ namespace avstudio
 					(Fmt.Context->oformat->flags & AVFMT_GLOBALHEADER))
 					ctx->flags = AV_CODEC_FLAG_GLOBAL_HEADER;
 
-				CodecContextAddition(ctx);
-			}
+				if (m_funcMiddleware) m_funcMiddleware(Result->Context);
 
-			if (m_funcMiddleware) m_funcMiddleware(Result->Context);
+				CodecContextAddition(ctx);
+				VideoParts.Codec->ConfigureHwAccel();
+			}
 		}
 
 		return Result;

@@ -17,9 +17,7 @@ namespace avstudio
 
 	std::shared_ptr<FWorkShop> CFactory::Input()
 	{
-		if (!m_Input)
-			m_Input = std::make_shared<FWorkShop>();
-
+		if (!m_Input) m_Input = std::make_shared<FWorkShop>();
 		return m_Input;
 	}
 

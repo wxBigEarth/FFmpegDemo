@@ -97,6 +97,8 @@ namespace avstudio
 			m_dVideoTime = AVERROR(EAGAIN);
 			return -1;
 		}
+		// Maybe it will force stop by user
+		if (m_evStatus == EIOStatus::IO_Done) return 0;
 
 		n_Frame = m_lstVideo.front();
 		m_lstVideo.pop_front();
@@ -117,6 +119,8 @@ namespace avstudio
 
 		std::unique_lock<std::mutex> lock(m_mutex);
 		if (m_lstAudio.size() == 0) return -1;
+		// Maybe it will force stop by user
+		if (m_evStatus == EIOStatus::IO_Done) return 0;
 
 		n_Frame = m_lstAudio.front();
 		m_lstAudio.pop_front();
@@ -174,12 +178,12 @@ namespace avstudio
 				}
 
 				m_dVideoTime = AV_NOPTS_VALUE;
-				Update();
+				Update(m_dAudioTime);
 			}
 			else
 			{
 				std::this_thread::sleep_for(std::chrono::milliseconds(kDelay));
-				if (m_dVideoTime == AVERROR(EAGAIN)) Update();
+				if (m_dVideoTime == AVERROR(EAGAIN)) Update(m_dAudioTime);
 			}
 		}
 	}

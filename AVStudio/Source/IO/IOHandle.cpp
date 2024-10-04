@@ -54,6 +54,7 @@ namespace avstudio
 
 	void IIOHandle::ForceStop()
 	{
+		if (m_fnStop) m_fnStop();
 		m_evStatus = EIOStatus::IO_Done;
 		m_eaStatus = EIOStatus::IO_Done;
 	}
@@ -75,9 +76,14 @@ namespace avstudio
 			m_evStatus == EIOStatus::IO_Done;
 	}
 
-	void IIOHandle::SetupCallback(std::function<void(FDataItem*)> n_func)
+	void IIOHandle::SetupDateCallback(std::function<void(FDataItem*)> n_func)
 	{
-		m_func = n_func;
+		m_fnReadData = n_func;
+	}
+
+	void IIOHandle::SetupStopCallback(std::function<void()> n_func)
+	{
+		m_fnStop = n_func;
 	}
 
 	void IIOHandle::SetDataClone(bool n_bClone)

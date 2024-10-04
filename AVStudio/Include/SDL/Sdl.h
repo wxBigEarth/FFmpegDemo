@@ -1,7 +1,7 @@
 #ifndef __SDL_H__
 #define __SDL_H__
-#include <functional>
 #include <memory>
+#include "SDL/SdlHandle.h"
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -14,22 +14,11 @@ extern "C" {
 
 namespace avstudio
 {
-	class ISdlHandle
+	enum class ESdlStatus
 	{
-	public:
-		// Read frame data
-		virtual AVFrame* SDL_ReadFrame(AVMediaType n_eMediaType) = 0;
-		// What to do with the frame after playing
-		virtual void SDL_ReadEnd(AVFrame* n_Frame) {}
-		// Quit
-		virtual void SDL_Stop() {}
-		// Update video 
-		void SDL_Update() const { if (m_fnUpdate) m_fnUpdate(); }
-
-		void SetUpdateCallback(std::function<void()> func) { m_fnUpdate = func; }
-
-	protected:
-		std::function<void()> m_fnUpdate = nullptr;
+		SS_Play = 0,
+		SS_Pause,
+		SS_Stop,
 	};
 
 	struct FSdl
@@ -70,21 +59,17 @@ namespace avstudio
 			int n_nNbChannel,
 			AVSampleFormat n_nSampleFormat);
 
-		// Input frame to render on the window, Default pixel format is YUV
-		// it also support NV12, NV21 pixel format
-		void UpdateVideo(AVFrame* n_Frame);
-		// Input audio frame to play audio
-		// It's called by SDL_AudioCallback in InitAudio() function
-		void UpdateAudio(AVFrame* n_Frame,
-			unsigned char* n_Stream, int n_nLen) const;
-
 		// SDL event, should call in the same thread as InitVieo
 		const unsigned int Event();
 		// Send event to display video
 		void SendDisplayEvent() const;
 
-		// Video callback PROC
-		void VideoProc();
+		/*
+		* Update
+		*	double n_dCur: current played time
+		*	double n_dMax: max duration
+		*/
+		void Update(double n_dCur, double n_dMax);
 
 		// Play
 		void Play();
@@ -92,6 +77,8 @@ namespace avstudio
 		void Pause();
 		// Is pause now
 		bool IsPause() const;
+		// Stop
+		void Stop();
 
 		void Release();
 
@@ -102,6 +89,9 @@ namespace avstudio
 		void CreateTexture(unsigned int n_nPixFmt);
 		void CreateRenderer(SDL_Window* n_Window);
 
+		// Video callback PROC
+		void VideoProc();
+
 		// Audio callback
 		static void AudioCallback(void* n_UserData,
 			unsigned char* n_szStream, int n_nLen);
@@ -109,12 +99,24 @@ namespace avstudio
 		// Audio callback PROC
 		void AudioProc(unsigned char* n_szStream, int n_nLen);
 
+		// Playing Process 
+		void ProgressBarProc(double n_dCur, double n_dMax);
+
+		// Input frame to render on the window, Default pixel format is YUV
+		// it also support NV12, NV21 pixel format
+		void UpdateVideo(AVFrame* n_Frame);
+		// Input audio frame to play audio
+		// It's called by SDL_AudioCallback in InitAudio() function
+		void UpdateAudio(AVFrame* n_Frame,
+			unsigned char* n_Stream, int n_nLen) const;
+
 	protected:
 		SDL_Window*		m_Window = nullptr;
 		SDL_Renderer*	m_Renderer = nullptr;
 		SDL_Texture*	m_Texture = nullptr;
 		SDL_Rect		m_Rect = { 0 };
 
+		// Indicate selected streams
 		unsigned char	m_nMediaMask = 0;
 		// Event that display video
 		unsigned int	m_nDisplayEvent = 0;
@@ -125,8 +127,8 @@ namespace avstudio
 		int				m_nPlanar = 0;
 		// The size of one sample
 		int				m_nBytesPerSample = 1;
-		// 0: play; 1: pause
-		int				m_nPause = 0;
+		// Status
+		ESdlStatus		m_eStatus = ESdlStatus::SS_Stop;
 
 		std::shared_ptr<ISdlHandle>	m_SdlHandle = nullptr;
 	};

@@ -4,7 +4,7 @@
 #include <vector>
 #include <string>
 #include <functional>
-#include "Util/Setting.h"
+#include "Core/Setting.h"
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -51,7 +51,7 @@ namespace avstudio
 			std::shared_ptr<FSetting> n_Setting = nullptr);
 
 		// Config hardware acceleration
-		void ConfiguraHwAccel();
+		void ConfigureHwAccel();
 
 		// Open codec context
 		void Open(AVDictionary** n_Options = nullptr);

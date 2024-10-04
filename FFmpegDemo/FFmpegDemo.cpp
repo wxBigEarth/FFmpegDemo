@@ -221,9 +221,9 @@ class CPlayer : public CIOPlayer, public ISdlHandle
 {
 public:
 	// 通过 CIOPlayer 继承
-	int Update() override
+	int Update(double n_dPlayedTime) override
 	{
-		SDL_Update();
+		SDL_Update(n_dPlayedTime, dMaxLength);
 		return 0;
 	}
 
@@ -247,11 +247,10 @@ public:
 	void SDL_Stop() override
 	{
 		// close SDL window
-		if (Editor) Editor->Stop();
 		ForceStop();
 	}
 
-	CEditor* Editor = nullptr;
+	double dMaxLength = 0;
 };
 
 static void Play()
@@ -260,12 +259,11 @@ static void Play()
 	{
 		CEditor Editor;
 		//OutputPlayer op;
-		auto op = std::make_shared<CPlayer>();
+		auto Player = std::make_shared<CPlayer>();
 		FSdl Sdl;
 
-		op->Editor = &Editor;
 		// Frames will be sent to op
-		Editor.SetIoHandle(op);
+		Editor.SetIoHandle(Player);
 
 		auto Setting = Editor.GetSetting();
 		Setting->bEnableHwAccel = true;
@@ -274,8 +272,9 @@ static void Play()
 		auto Input = Editor.OpenInputFile("4.mp4");
 		auto Output = Editor.AllocOutputFile("");
 
+		Player->dMaxLength = Input->Fmt.Length();
 		// Initialize SDL
-		Sdl.Init(Input->GetMediaMask(), op);
+		Sdl.Init(Input->GetMediaMask(), Player);
 
 		if (Input->VideoParts.Stream)
 		{

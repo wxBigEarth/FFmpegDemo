@@ -13,7 +13,6 @@
 
 #include "Util/Common.h"
 #include "Util/Debug.h"
-#include "Util/Setting.h"
 #include "Util/Queue.h"
 #include "Util/DataItem.h"
 #include "Util/MediaMask.h"
@@ -27,7 +26,9 @@
 #include "Apis/Frame.h"
 #include "Apis/Packet.h"
 #include "Apis/Resample.h"
-#include "Apis/Sdl.h"
+
+#include "SDL/SdlHandle.h"
+#include "SDL/Sdl.h"
 
 #include "Filter/Filter.h"
 #include "Filter/AudioMixFilter.h"
@@ -37,6 +38,7 @@
 #include "IO/IOSyncAV.h"
 #include "IO/IOPlayer.h"
 
+#include "Core/Setting.h"
 #include "Core/LatheParts.h"
 #include "Core/WorkShop.h"
 #include "Core/Factory.h"

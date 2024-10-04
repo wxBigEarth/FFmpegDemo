@@ -1,4 +1,4 @@
-#include "Util/Setting.h"
+#include "Core/Setting.h"
 
 
 namespace avstudio

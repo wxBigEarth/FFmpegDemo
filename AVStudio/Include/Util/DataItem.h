@@ -13,6 +13,13 @@ extern "C" {
 
 namespace avstudio
 {
+	enum class EDataType
+	{
+		DT_None = 0,
+		DT_Packet,
+		DT_Frame,
+	};
+
 	struct FDataItem
 	{
 		void*		Data = nullptr;
@@ -24,6 +31,9 @@ namespace avstudio
 		// Cover data to AVFrame*
 		AVFrame*	f();
 	};
+
+	// Clone AVFrame or AVPacket
+	void* AVClone(EDataType n_eDataType, void* n_Data);
 
 	// Free AVPacket/AVFrame by DataType
 	void AVFreeDataPtr(FDataItem** n_DataItem);

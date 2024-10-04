@@ -1,4 +1,4 @@
-#include "Apis/Sdl.h"
+#include "SDL/Sdl.h"
 #include "Util/Debug.h"
 #include "Util/MediaMask.h"
 #ifdef __cplusplus
@@ -29,13 +29,16 @@ namespace avstudio
 			nFlags |= SDL_INIT_AUDIO;
 
 		int ret = SDL_Init(nFlags);
-		ThrowExceptionExpr(ret, "Fail to initialize SDL: %s.\n", SDL_GetError());
+		ThrowExceptionExpr(ret, 
+			"Fail to initialize SDL: %s.\n", SDL_GetError());
 
 		m_SdlHandle = n_Handle;
 		m_nMediaMask = n_nMediaMask;
 
 		// Callback function to update video
-		m_SdlHandle->SetUpdateCallback(std::bind(&FSdl::VideoProc, this));
+		auto pfn = std::bind(&FSdl::Update, this,
+			std::placeholders::_1, std::placeholders::_2);
+		m_SdlHandle->SetUpdateCallback(pfn);
 	}
 
 	void FSdl::InitVideo(const char* n_szTitle,
@@ -134,68 +137,6 @@ namespace avstudio
 		Play();
 	}
 
-	void FSdl::UpdateVideo(AVFrame* n_Frame)
-	{
-		if (!m_Texture || !m_Renderer || m_nPause || !n_Frame) return;
-
-		auto ret = 0;
-		auto ePixFmt = (AVPixelFormat)n_Frame->format;
-
-		if (ePixFmt == AVPixelFormat::AV_PIX_FMT_NV12 ||
-			ePixFmt == AVPixelFormat::AV_PIX_FMT_NV21)
-			ret = SDL_UpdateNVTexture(m_Texture, &m_Rect,
-				n_Frame->data[0], n_Frame->linesize[0],
-				n_Frame->data[1], n_Frame->linesize[1]);
-		else
-			ret = SDL_UpdateYUVTexture(m_Texture, &m_Rect,
-				n_Frame->data[0], n_Frame->linesize[0],
-				n_Frame->data[1], n_Frame->linesize[1],
-				n_Frame->data[2], n_Frame->linesize[2]);
-
-		if (ret == 0)
-		{
-			SDL_RenderClear(m_Renderer);
-			SDL_RenderCopy(m_Renderer, m_Texture, nullptr, &m_Rect);
-			SDL_RenderPresent(m_Renderer);
-		}
-		else
-			AVDebug("Warning: Fail to render frame on the window,Error: %s\n",
-				SDL_GetError());
-	}
-
-	void FSdl::UpdateAudio(AVFrame* n_Frame,
-		unsigned char* n_Stream, int n_nLen) const
-	{
-		if (m_nPause || !n_Frame) return;
-
-		SDL_memset(n_Stream, 0, n_nLen);
-
-		std::string sSamples;
-
-		sSamples.resize(n_nLen);
-
-		if (m_nPlanar == 0)
-		{
-			memcpy_s((char*)sSamples.c_str(), n_nLen, n_Frame->data[0], n_nLen);
-		}
-		else
-		{
-			int k = 0;
-			for (int i = 0; i < n_Frame->nb_samples; i++)
-			{
-				for (int j = 0; j < m_nChannels; j++)
-				{
-					memcpy_s((char*)sSamples.c_str() + k, m_nBytesPerSample,
-						&n_Frame->data[j][m_nBytesPerSample * i], m_nBytesPerSample);
-
-					k += m_nBytesPerSample;
-				}
-			}
-		}
-
-		SDL_MixAudio(n_Stream, (const Uint8*)sSamples.data(), n_nLen, SDL_MIX_MAXVOLUME);
-	}
-
 	const unsigned int FSdl::Event()
 	{
 		if (!m_Window) return 0;
@@ -206,8 +147,8 @@ namespace avstudio
 		{
 			switch (Event.type) {
 			case SDL_QUIT:
-				Release();
 				if (m_SdlHandle) m_SdlHandle->SDL_Stop();
+				Stop();
 				break;
 			case SDL_KEYUP:
 				if (Event.key.keysym.sym == SDLK_SPACE)
@@ -243,36 +184,39 @@ namespace avstudio
 		SDL_PushEvent(&Event);
 	}
 
-	void FSdl::VideoProc()
+	void FSdl::Update(double n_dCur, double n_dMax)
 	{
-		if (!m_SdlHandle || !m_Window) return;
-
-		AVFrame* Frame = m_SdlHandle->SDL_ReadFrame(AVMediaType::AVMEDIA_TYPE_VIDEO);
-		if (!Frame) return;
-
-		UpdateVideo(Frame);
-		m_SdlHandle->SDL_ReadEnd(Frame);
+		VideoProc();
+		ProgressBarProc(n_dCur, n_dMax);
+		SDL_RenderPresent(m_Renderer);
 	}
 
 	void FSdl::Play()
 	{
-		m_nPause = 0;
-		SDL_PauseAudio(m_nPause);
+		m_eStatus = ESdlStatus::SS_Play;
+		SDL_PauseAudio(0);
 	}
 
 	void FSdl::Pause()
 	{
-		m_nPause = 1;
-		SDL_PauseAudio(m_nPause);
+		m_eStatus = ESdlStatus::SS_Pause;
+		SDL_PauseAudio(0);
 	}
 
 	bool FSdl::IsPause() const
 	{
-		return m_nPause == 1;
+		return m_eStatus == ESdlStatus::SS_Pause;
+	}
+
+	void FSdl::Stop()
+	{
+		m_eStatus = ESdlStatus::SS_Stop;
 	}
 
 	void FSdl::Release()
 	{
+		m_eStatus = ESdlStatus::SS_Stop;
+
 		if (m_Texture) SDL_DestroyTexture(m_Texture);
 		if (m_Renderer) SDL_DestroyRenderer(m_Renderer);
 		if (m_Window) SDL_DestroyWindow(m_Window);
@@ -325,6 +269,17 @@ namespace avstudio
 			"Fail to create renderer: %s.\n", SDL_GetError());
 	}
 
+	void FSdl::VideoProc()
+	{
+		if (!m_SdlHandle || !m_Window) return;
+
+		auto Frame = m_SdlHandle->SDL_ReadFrame(AVMediaType::AVMEDIA_TYPE_VIDEO);
+		if (!Frame) return;
+
+		UpdateVideo(Frame);
+		m_SdlHandle->SDL_ReadEnd(Frame);
+	}
+
 	void FSdl::AudioCallback(void* n_UserData, 
 		unsigned char* n_szStream, int n_nLen)
 	{
@@ -336,11 +291,96 @@ namespace avstudio
 	{
 		if (!m_SdlHandle) return;
 
-		AVFrame* Frame = m_SdlHandle->SDL_ReadFrame(AVMediaType::AVMEDIA_TYPE_AUDIO);
+		auto Frame = m_SdlHandle->SDL_ReadFrame(AVMediaType::AVMEDIA_TYPE_AUDIO);
 		if (!Frame) return;
 
 		UpdateAudio(Frame, n_szStream, n_nLen);
 		m_SdlHandle->SDL_ReadEnd(Frame);
+	}
+
+	void FSdl::ProgressBarProc(double n_dCur, double n_dMax)
+	{
+		if (n_dMax == 0) return;
+
+		int nWidth = static_cast<int>(m_Rect.w * 0.9f);
+		int nHeight = 10;
+		int nLeft = (m_Rect.w - nWidth) / 2;
+		int nTop = m_Rect.h - nHeight - 20;
+
+		// Draw background process bar
+		SDL_Rect BgRect = { nLeft, nTop, nWidth, nHeight };
+		SDL_SetRenderDrawColor(m_Renderer, 255, 255, 255, 255);
+		SDL_RenderFillRect(m_Renderer, &BgRect);
+
+		// 计算进度条宽度并绘制进度条
+		auto dProgress = n_dCur / n_dMax;
+		auto barWidth = static_cast<int>(dProgress * BgRect.w);
+		SDL_Rect BarRect = { BgRect.x, BgRect.y, barWidth, BgRect.h };
+		SDL_SetRenderDrawColor(m_Renderer, 0, 255, 0, 255);
+		SDL_RenderFillRect(m_Renderer, &BarRect);
+	}
+
+	void FSdl::UpdateVideo(AVFrame* n_Frame)
+	{
+		if (!n_Frame || !m_Texture || !m_Renderer ||
+			m_eStatus != ESdlStatus::SS_Play) return;
+
+		auto ret = 0;
+		auto ePixFmt = (AVPixelFormat)n_Frame->format;
+
+		if (ePixFmt == AVPixelFormat::AV_PIX_FMT_NV12 ||
+			ePixFmt == AVPixelFormat::AV_PIX_FMT_NV21)
+			ret = SDL_UpdateNVTexture(m_Texture, &m_Rect,
+				n_Frame->data[0], n_Frame->linesize[0],
+				n_Frame->data[1], n_Frame->linesize[1]);
+		else
+			ret = SDL_UpdateYUVTexture(m_Texture, &m_Rect,
+				n_Frame->data[0], n_Frame->linesize[0],
+				n_Frame->data[1], n_Frame->linesize[1],
+				n_Frame->data[2], n_Frame->linesize[2]);
+
+		if (ret == 0)
+		{
+			SDL_RenderClear(m_Renderer);
+			SDL_RenderCopy(m_Renderer, m_Texture, nullptr, &m_Rect);
+			//SDL_RenderPresent(m_Renderer);
+		}
+		else
+			AVDebug("Warning: Fail to render frame on the window,Error: %s\n",
+				SDL_GetError());
+	}
+
+	void FSdl::UpdateAudio(AVFrame* n_Frame,
+		unsigned char* n_Stream, int n_nLen) const
+	{
+		if (m_eStatus != ESdlStatus::SS_Play || !n_Frame) return;
+
+		SDL_memset(n_Stream, 0, n_nLen);
+
+		std::string sSamples;
+
+		sSamples.resize(n_nLen);
+
+		if (m_nPlanar == 0)
+		{
+			memcpy_s((char*)sSamples.c_str(), n_nLen, n_Frame->data[0], n_nLen);
+		}
+		else
+		{
+			int k = 0;
+			for (int i = 0; i < n_Frame->nb_samples; i++)
+			{
+				for (int j = 0; j < m_nChannels; j++)
+				{
+					memcpy_s((char*)sSamples.c_str() + k, m_nBytesPerSample,
+						&n_Frame->data[j][m_nBytesPerSample * i], m_nBytesPerSample);
+
+					k += m_nBytesPerSample;
+				}
+			}
+		}
+
+		SDL_MixAudio(n_Stream, (const Uint8*)sSamples.data(), n_nLen, SDL_MIX_MAXVOLUME);
 	}
 
 }

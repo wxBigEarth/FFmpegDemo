@@ -54,7 +54,7 @@ namespace avstudio
 		void PlayProc();
 
 		// Will be trigger when it should update video
-		virtual int Update() = 0;
+		virtual int Update(double n_dPlayedTime) = 0;
 
 	protected:
 		std::thread m_tPlay;

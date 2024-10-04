@@ -92,7 +92,7 @@ namespace avstudio
 
 					if (m_eaStatus == EIOStatus::IO_Doing && m_aItem)
 					{
-						if (m_func) m_func(m_aItem);
+						if (m_fnReadData) m_fnReadData(m_aItem);
 						AVFreeDataPtr(&m_aItem);
 					}
 				}
@@ -104,7 +104,7 @@ namespace avstudio
 
 					if (m_evStatus == EIOStatus::IO_Doing && m_vItem)
 					{
-						if (m_func) m_func(m_vItem);
+						if (m_fnReadData) m_fnReadData(m_vItem);
 						AVFreeDataPtr(&m_vItem);
 					}
 				}
@@ -130,12 +130,12 @@ namespace avstudio
 
 				if (flag < 0)
 				{
-					if (m_func) m_func(m_vItem);
+					if (m_fnReadData) m_fnReadData(m_vItem);
 					AVFreeDataPtr(&m_vItem);
 				}
 				else
 				{
-					if (m_func) m_func(m_aItem);
+					if (m_fnReadData) m_fnReadData(m_aItem);
 					AVFreeDataPtr(&m_aItem);
 				}
 			}

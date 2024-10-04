@@ -24,6 +24,11 @@ file(GLOB ApiSource
 	${PROJECT_SOURCE_DIR}/Source/Apis/*.cpp
 )
 
+file(GLOB SdlSource 
+	${PROJECT_SOURCE_DIR}/Include/Sdl/*.h
+	${PROJECT_SOURCE_DIR}/Source/Sdl/*.cpp
+)
+
 file(GLOB CoreSource 
 	${PROJECT_SOURCE_DIR}/Include/Core/*.h
 	${PROJECT_SOURCE_DIR}/Source/Core/*.cpp
@@ -42,6 +47,7 @@ file(GLOB IOSource
 source_group(Main FILES ${MainSource})
 source_group(Util FILES ${UtilSource})
 source_group(Apis FILES ${ApiSource})
+source_group(Sdl FILES ${SdlSource})
 source_group(Core FILES ${CoreSource})
 source_group(Filter FILES ${FilterSource})
 source_group(IO FILES ${IOSource})
@@ -51,6 +57,7 @@ source_group(IO FILES ${IOSource})
 include_directories(Include)
 #include_directories(Include/Util)
 #include_directories(Include/Apis)
+#include_directories(Include/Sdl)
 #include_directories(Include/Core)
 #include_directories(Include/Filter)
 #include_directories(Include/IO)
@@ -60,6 +67,7 @@ add_library(AVStudio SHARED
 	${MainSource}
 	${UtilSource}
 	${ApiSource}
+	${SdlSource}
 	${CoreSource}
 	${FilterSource}
 	${IOSource}

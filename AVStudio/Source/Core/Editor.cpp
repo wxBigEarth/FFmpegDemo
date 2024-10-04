@@ -11,6 +11,8 @@ namespace avstudio
 	{
 		m_Output = std::make_shared<FWorkShop>();
 		m_Setting = std::make_shared<FSetting>();
+
+		m_Output->Init(ECtxType::CT_Output, 0, m_Setting);
 	}
 
 	CEditor::~CEditor()
@@ -48,8 +50,6 @@ namespace avstudio
 				n_OutputFormat, n_szFormatName);
 			m_Output->Fmt.OpenOutputFile();
 		}
-
-		m_Output->Init(ECtxType::CT_Output, 0, m_Setting);
 
 		return m_Output;
 	}
@@ -494,13 +494,14 @@ namespace avstudio
 		{
 			m_IoHandle = std::make_shared<CIOSyncAV>();
 
-			m_IoHandle->SetupCallback(
+			m_IoHandle->SetupDateCallback(
 				std::bind(&CEditor::WriteIntoFile, this, std::placeholders::_1));
 
 			m_bFreeHandle = true;
 		}
 
 		m_IoHandle->Init(m_Output->GetMediaMask());
+		m_IoHandle->SetupStopCallback([this]() { Stop(); });
 	}
 
 	size_t CEditor::GetBufferSize(AVMediaType n_eMediaType)

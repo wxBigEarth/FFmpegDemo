@@ -4,7 +4,7 @@
 #include "Core/Factory.h"
 #include "Util/Thread.h"
 #include "IO/IOHandle.h"
-#include "Util/Setting.h"
+#include "Core/Setting.h"
 
 
 namespace avstudio
@@ -13,7 +13,7 @@ namespace avstudio
 	{
 	public:
 		CEditor();
-		~CEditor();
+		virtual ~CEditor();
 
 		/*
 		* Add an input file, if n_sFileName is empty, then add an empty input file
