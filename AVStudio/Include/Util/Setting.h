@@ -13,30 +13,31 @@ extern "C" {
 
 namespace avstudio
 {
-	constexpr auto kGraphicCardNvidia = 0;
-	constexpr auto kGraphicCardAmd = 1;
-	constexpr auto kGraphicCardIntel = 2;
+	enum class EGraphicCard
+	{
+		GC_Nvidia = 0,
+		GC_Amd,
+		GC_Intel,
+	};
 
 	struct FSetting
 	{
-		// should enable hardware accel
+		// should enable hardware acceleration
 		bool	bEnableHwAccel = false;
 
 		// Set the type of graphic card
-		void SetGraphicCardType(int n_nCard);
+		void SetGraphicCardType(EGraphicCard n_eCard);
 
-		const int GetGraphicCard() const;
+		const EGraphicCard GetGraphicCard() const;
 
 		const AVHWDeviceType GetHwDeviceType() const;
 
 	protected:
 		// what kind of graphic card
-		int		nGraphicCard = kGraphicCardNvidia;
+		EGraphicCard	eGraphicCard = EGraphicCard::GC_Nvidia;
 
-		AVHWDeviceType eHwDevice = AVHWDeviceType::AV_HWDEVICE_TYPE_CUDA;
+		AVHWDeviceType	eHwDevice = AVHWDeviceType::AV_HWDEVICE_TYPE_CUDA;
 	};
-
-	FSetting* GetSetting();
 }
 #endif // __AVSETTING_H__
 

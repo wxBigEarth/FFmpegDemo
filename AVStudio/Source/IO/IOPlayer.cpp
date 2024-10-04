@@ -131,6 +131,11 @@ namespace avstudio
 		return 0;
 	}
 
+	const double CIOPlayer::PlayedTime() const
+	{
+		return m_dAudioTime;
+	}
+
 	void CIOPlayer::Join()
 	{
 		if (m_tPlay.joinable()) m_tPlay.join();

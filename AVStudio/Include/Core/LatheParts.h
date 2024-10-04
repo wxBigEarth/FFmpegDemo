@@ -13,8 +13,9 @@ namespace avstudio
 {
 	struct FLatheParts
 	{
-		// Indicate if it should be decoded
-		int				nShouldDecode = 0;
+		// For input context, indicates weather it should be decoded
+		// For output context, not use
+		int				nFlag = 0;
 		// Index of video stream, -1: invalid
 		int				nStreamIndex = -1;
 

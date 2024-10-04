@@ -43,11 +43,13 @@ namespace avstudio
 		// Create video render window
 		// Just support YUV pixel format
 		void InitVideo(const char* n_szTitle, 
-			const int n_nWidth, const int n_nHeight);
+			const int n_nWidth, const int n_nHeight,
+			unsigned int n_nPixFmt = SDL_PIXELFORMAT_IYUV);
 
 		// Create video render window
 		// n_WinId: MFC window HWND or QT winID
-		void InitVideo(const void* n_WinId);
+		void InitVideo(const void* n_WinId, 
+			unsigned int n_nPixFmt = SDL_PIXELFORMAT_IYUV);
 
 		// Init audio parameter
 		/*
@@ -68,7 +70,8 @@ namespace avstudio
 			int n_nNbChannel,
 			AVSampleFormat n_nSampleFormat);
 
-		// Input YUV frame to render on the window
+		// Input frame to render on the window, Default pixel format is YUV
+		// it also support NV12, NV21 pixel format
 		void UpdateVideo(AVFrame* n_Frame);
 		// Input audio frame to play audio
 		// It's called by SDL_AudioCallback in InitAudio() function

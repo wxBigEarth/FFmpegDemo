@@ -10,6 +10,7 @@ namespace avstudio
 	CEditor::CEditor()
 	{
 		m_Output = std::make_shared<FWorkShop>();
+		m_Setting = std::make_shared<FSetting>();
 	}
 
 	CEditor::~CEditor()
@@ -28,7 +29,7 @@ namespace avstudio
 
 		auto WorkShop = Factory->Input();
 		WorkShop->Fmt.OpenInputFile(n_sFileName, n_InputFormat, n_Options);
-		WorkShop->Init(ECtxType::CT_Input, n_nMediaMask);
+		WorkShop->Init(ECtxType::CT_Input, n_nMediaMask, m_Setting);
 		WorkShop->SetGroupId(n_nGroupId);
 
 		m_vInputCtx.emplace_back(Factory);
@@ -48,7 +49,7 @@ namespace avstudio
 			m_Output->Fmt.OpenOutputFile();
 		}
 
-		m_Output->Init(ECtxType::CT_Output);
+		m_Output->Init(ECtxType::CT_Output, 0, m_Setting);
 
 		return m_Output;
 	}
@@ -62,6 +63,11 @@ namespace avstudio
 			Result = m_vInputCtx[n_nIndex]->Input();
 
 		return Result;
+	}
+
+	std::shared_ptr<avstudio::FSetting> CEditor::GetSetting()
+	{
+		return m_Setting;
 	}
 
 	int CEditor::WriteFrame(AVFrame* n_Frame, AVMediaType n_eMediaType,
@@ -121,7 +127,6 @@ namespace avstudio
 			for (size_t i = 0; i < m_vInputCtx.size(); i++)
 			{
 				auto Item = m_vInputCtx[i]->Input();
-
 				Item->SetDecodeFlag(1);
 			}
 		}
@@ -158,11 +163,16 @@ namespace avstudio
 
 		// No video stream
 		if (!m_Output->VideoParts.Stream && 
-			(nCount > 1 || Input->VideoParts.CodecID() != vDefaultId))
+			(Input->VideoParts.Filter ||
+				nCount > 1 || 
+				Input->VideoParts.CodecID() != vDefaultId))
 		{
 			// No video codec
-			// More than one input video stream or only one input stream, 
-			// but the codec id is not equal to default codec id of output video stream
+			// 1. Filter is valid
+			// 2. Number of input > 1
+			// 3. Only one input stream, 
+			//		but the codec id is not equal to 
+			//		default codec id of output video stream
 			bCreate = true;
 			m_Output->BuildCodecContext(
 				vDefaultId, Input->VideoParts.Codec->Context);
@@ -170,7 +180,8 @@ namespace avstudio
 
 		if (m_Output->VideoParts.Codec)
 		{
-			if (nCount > 1 ||
+			if (Input->VideoParts.Filter || 
+				nCount > 1 ||
 				CompareCodecFormat(m_Output->VideoParts.Codec, 
 					Input->VideoParts.Codec) != 0)
 			{
@@ -181,10 +192,7 @@ namespace avstudio
 			for (size_t i = 0; i < m_vInputCtx.size() && bDecode; i++)
 			{
 				auto Item = m_vInputCtx[i]->Input();
-
-				Item->SetDecodeFlag(
-					nCount > 0 ? 1 : Item->AudioParts.nShouldDecode,
-					AVMediaType::AVMEDIA_TYPE_VIDEO);
+				Item->SetDecodeFlag(1, AVMEDIA_TYPE_VIDEO);
 			}
 		}
 
@@ -248,12 +256,16 @@ namespace avstudio
 
 		// No video stream
 		if (!m_Output->AudioParts.Stream &&
-			(nCount > 1 || Input->AudioParts.CodecID() != aDefaultId))
+			(Input->AudioParts.Filter ||
+				nCount > 1 || 
+				Input->AudioParts.CodecID() != aDefaultId))
 		{
 			// No audio codec
-			// More than one input audio stream or only one input stream, 
-			// but the codec id is not equal to default codec id of 
-			// output audio stream
+			// 1. Filter is valid
+			// 2. Number of input > 1
+			// 3. Only one input stream, 
+			//		but the codec id is not equal to 
+			//		default codec id of output video stream
 			bCreate = true;
 			m_Output->BuildCodecContext(
 				aDefaultId, Input->AudioParts.Codec->Context);
@@ -261,7 +273,8 @@ namespace avstudio
 
 		if (m_Output->AudioParts.Codec)
 		{
-			if (nCount > 1 ||
+			if (Input->AudioParts.Filter || 
+				nCount > 1 ||
 				CompareCodecFormat(m_Output->AudioParts.Codec, 
 					Input->AudioParts.Codec) != 0)
 			{
@@ -272,10 +285,7 @@ namespace avstudio
 			for (size_t i = 0; i < m_vInputCtx.size() && bDecode; i++)
 			{
 				auto Item = m_vInputCtx[i]->Input();
-
-				Item->SetDecodeFlag(
-					nCount > 0 ? 1 : Item->AudioParts.nShouldDecode,
-					AVMediaType::AVMEDIA_TYPE_AUDIO);
+				Item->SetDecodeFlag(1, AVMediaType::AVMEDIA_TYPE_AUDIO);
 			}
 		}
 
@@ -316,13 +326,9 @@ namespace avstudio
 		{
 			if (Processing() >= 0)
 			{
-				m_Output->Processing();
 				m_Output->Fmt.WriteHeader();
 
-				SetupDefaultIoHandle();
-
-				int nCurrentId = -1;
-				std::vector<int> vInuts;
+				SetupIoHandle();
 
 				// Find all groups in input contexts
 				std::map<unsigned int, std::vector<size_t>> mGroup;
@@ -375,9 +381,9 @@ namespace avstudio
 
 		for (size_t i = 0; i < n_vInputs.size() && !IsStop(); i++)
 		{
-			auto Factory = m_vInputCtx[n_vInputs[i]];
+			auto& Factory = m_vInputCtx[n_vInputs[i]];
 			Factory->Processing(i == m_vInputCtx.size() - 1, n_bIsLast);
-			Factory->Input()->CheckForDecoding(m_Output);
+			Factory->Input()->CreateFrameConverter(m_Output);
 
 			if (m_IoHandle) m_IoHandle->Processing();
 
@@ -426,16 +432,16 @@ namespace avstudio
 
 		for (size_t i = 0; i < n_vInputs.size() && !IsStop(); i++)
 		{
-			auto Factory = m_vInputCtx[n_vInputs[i]];
+			auto& Factory = m_vInputCtx[n_vInputs[i]];
 			Factory->Processing(true, n_bIsLast);
-			Factory->Input()->CheckForDecoding(m_Output);
+			Factory->Input()->CreateFrameConverter(m_Output);
 		}
 
 		while (nEndCount < n_vInputs.size() && !IsStop())
 		{
 			for (size_t i = 0; i < n_vInputs.size() && !IsStop(); i++)
 			{
-				auto Factory = m_vInputCtx[n_vInputs[i]];
+				auto& Factory = m_vInputCtx[n_vInputs[i]];
 				if (Factory->IsEnd()) continue;
 
 				vSize = GetBufferSize(AVMediaType::AVMEDIA_TYPE_VIDEO);
@@ -457,7 +463,7 @@ namespace avstudio
 
 		for (size_t i = 0; i < n_vInputs.size(); i++)
 		{
-			auto Factory = m_vInputCtx[n_vInputs[i]];
+			auto& Factory = m_vInputCtx[n_vInputs[i]];
 
 			if (!IsStop())
 			{
@@ -480,7 +486,7 @@ namespace avstudio
 		}
 	}
 
-	void CEditor::SetupDefaultIoHandle()
+	void CEditor::SetupIoHandle()
 	{
 		// If IO handle has been setup, or the output context is invalid, 
 		// no need to create default IO handle

@@ -26,8 +26,9 @@ namespace avstudio
 	int CFactory::Processing(const bool n_bIsLastItem, const bool n_bIsLastGroup)
 	{
 		m_Input->Processing();
-
 		m_Input->OpenCodecContext();
+		m_Output->Processing();
+
 		m_bIsLastItem = n_bIsLastItem;
 		m_bIsLastGroup = n_bIsLastGroup;
 
@@ -69,7 +70,7 @@ namespace avstudio
 				m_Packet->stream_index = 0;
 				m_Packet->time_base = m_Input->VideoParts.Stream->time_base;
 
-				if (m_Input->VideoParts.nShouldDecode == 0 && m_Output->IsValid()
+				if (m_Input->VideoParts.nFlag == 0 && m_Output->IsValid()
 					&& av_cmp_q(m_Input->VideoParts.Stream->time_base,
 						m_Output->VideoParts.Stream->time_base) != 0)
 				{
@@ -87,7 +88,7 @@ namespace avstudio
 				m_Packet->stream_index = m_Input->VideoParts.nStreamIndex < 0 ? 0 : 1;
 				m_Packet->time_base = m_Input->AudioParts.Stream->time_base;
 
-				if (m_Input->AudioParts.nShouldDecode == 0 && m_Output->IsValid()
+				if (m_Input->AudioParts.nFlag == 0 && m_Output->IsValid()
 					&& av_cmp_q(m_Input->AudioParts.Stream->time_base,
 						m_Output->AudioParts.Stream->time_base) != 0)
 				{
@@ -186,7 +187,7 @@ namespace avstudio
 		}
 
 		if (!oLatheParts || !iLatheParts) return 0;
-		if (iLatheParts->nShouldDecode == 0)
+		if (iLatheParts->nFlag == 0)
 		{
 			AVPacket* p = n_Packet;
 			if (!p || !n_Packet->data || n_Packet->size == 0)
@@ -259,8 +260,7 @@ namespace avstudio
 			
 			if (Frame)
 			{
-				if (!m_Output->VideoParts.Stream || 
-					m_Output->VideoParts.Duration == 0)
+				if (m_Output->VideoParts.Duration == 0)
 					Frame->duration = n_Frame->duration;
 				else
 					Frame->duration = m_Output->VideoParts.Duration;
@@ -332,7 +332,7 @@ namespace avstudio
 		if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_VIDEO &&
 			m_Input->VideoParts.Filter)
 		{
-			auto Filter = m_Input->VideoParts.Filter;
+			auto& Filter = m_Input->VideoParts.Filter;
 			Filter->Push(m_Input->GetGroupIndex(), n_Frame);
 
 			ret = Filter->Pop(
@@ -343,7 +343,7 @@ namespace avstudio
 		else if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_AUDIO &&
 			m_Input->AudioParts.Filter)
 		{
-			auto Filter = m_Input->AudioParts.Filter;
+			auto& Filter = m_Input->AudioParts.Filter;
 			Filter->Push(m_Input->GetGroupIndex(), n_Frame);
 
 			ret = Filter->Pop(
@@ -378,12 +378,11 @@ namespace avstudio
 		}
 
 		if (!oLatheParts || !iLatheParts) return ret;
-		oLatheParts->nShouldDecode = iLatheParts->nShouldDecode;
 
 		if (n_Frame && iLatheParts->Codec)
 			n_Frame->time_base = iLatheParts->Codec->Context->time_base;
 
-		if (oLatheParts->nShouldDecode == 0 ||
+		if (!oLatheParts->Codec->IsOpen() ||
 			!oLatheParts->Stream || 
 			(!n_Frame && (!m_bIsLastItem || !m_bIsLastGroup)) ||
 			!m_Output->IsValid())

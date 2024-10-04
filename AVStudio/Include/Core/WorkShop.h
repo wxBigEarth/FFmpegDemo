@@ -24,7 +24,8 @@ namespace avstudio
 		~FWorkShop();
 
 		void Init(ECtxType n_eCtxType, 
-			const unsigned char n_nMediaMask = MEDIAMASK_AV);
+			const unsigned char n_nMediaMask = MEDIAMASK_AV,
+			std::shared_ptr<FSetting> n_Setting = nullptr);
 		void Release();
 
 		// Do something before start
@@ -88,10 +89,11 @@ namespace avstudio
 			AVMediaType n_eMediaType = AVMediaType::AVMEDIA_TYPE_UNKNOWN);
 
 		// Compare the output codec, check weather it should be decode
-		void CheckForDecoding(std::shared_ptr<FWorkShop> n_Output,
+		void CreateFrameConverter(std::shared_ptr<FWorkShop> n_Output,
 			AVMediaType n_eMediaType = AVMediaType::AVMEDIA_TYPE_UNKNOWN);
 
-		// Set if input context should be decoded, just decoding without convert frame
+		// Set if input context should be decoded, just decoding 
+		// without convert frame, for input context only
 		void SetDecodeFlag(int n_nFlag, 
 			AVMediaType n_eMediaType = AVMediaType::AVMEDIA_TYPE_UNKNOWN);
 
@@ -128,7 +130,7 @@ namespace avstudio
 		* It will be called when AVStudio create codec automatic,
 		* at this time, caller can modify the parameters of codec context
 		*/ 
-		void SetupMiddleware(std::function<void(FWorkShop*)> n_func);
+		void SetupMiddleware(std::function<void(AVCodecContext*)> n_func);
 
 		FFormatContext Fmt;
 
@@ -166,10 +168,13 @@ namespace avstudio
 		// Count of audio AVFrame pts
 		int64_t			m_nAudioPts = 0;
 
-		// For input context only, used to split input context
-		std::vector<FFragment> m_vFragments;
+		// Setting
+		std::shared_ptr<FSetting>		m_Setting = nullptr;
 
-		std::function<void(FWorkShop*)> m_funcMiddleware = nullptr;
+		// For input context only, used to split input context
+		std::vector<FFragment>			m_vFragments;
+
+		std::function<void(AVCodecContext*)> m_funcMiddleware = nullptr;
 	};
 }
 

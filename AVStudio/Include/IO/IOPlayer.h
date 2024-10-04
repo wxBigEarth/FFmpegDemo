@@ -45,6 +45,9 @@ namespace avstudio
 		// Read audio frame from list
 		int PopAudio(AVFrame*& n_Frame);
 
+		// Get played duration
+		const double PlayedTime() const;
+
 	protected:
 		void Join();
 

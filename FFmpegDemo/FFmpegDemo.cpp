@@ -20,6 +20,7 @@ public:
 	}
 };
 
+// Cover one media file to another extension
 static void Cover()
 {
 	try
@@ -47,12 +48,11 @@ static void Cover()
 		// codec context
 		//
 		// Output->SetupMiddleware(
-		//	[](FWorkShop* WorkShop) {
+		//	[](AVCodecContext* n_Codec) {
 		//
-		//		if (WorkShop->VideoParts.Codec)
-		//		{
-		//			WorkShop->VideoParts.Codec->Context->framerate = { 30, 1 };
-		//		}
+		//		n_Codec->framerate = { 30, 1 };
+		//		n_Codec->width = 800;
+		//		n_Codec->height = 600;
 		//	}
 		//);
 
@@ -117,6 +117,29 @@ static void Cover()
 	}
 }
 
+// Cover one media file to another extension use hardware acceleration
+static void HwCover()
+{
+	try
+	{
+		CEditor Editor;
+
+		auto Setting = Editor.GetSetting();
+		Setting->bEnableHwAccel = true;
+
+		auto Input = Editor.OpenInputFile("1.avi");
+		auto Output = Editor.AllocOutputFile("1-1.mp4");
+
+		Editor.Start();
+		Editor.Join();
+	}
+	catch (const std::exception& e)
+	{
+		cout << e.what() << endl;
+	}
+}
+
+// Merge 2 media files
 static void Merge()
 {
 	try
@@ -162,6 +185,7 @@ static void MixAudio()
 	{
 		CEditor Editor;
 
+		auto input3 = Editor.OpenInputFile("4.mp4");
 		auto Input = Editor.OpenInputFile("2.mp4", 0);
 		auto Input2 = Editor.OpenInputFile("1.mp3", 0);
 		auto Output = Editor.AllocOutputFile("2-2.mp4");
@@ -243,6 +267,9 @@ static void Play()
 		// Frames will be sent to op
 		Editor.SetIoHandle(op);
 
+		auto Setting = Editor.GetSetting();
+		Setting->bEnableHwAccel = true;
+
 		//auto Input = Editor.OpenInputFile("4.mp4", kNO_GROUP, MEDIAMASK_VIDEO);
 		auto Input = Editor.OpenInputFile("4.mp4");
 		auto Output = Editor.AllocOutputFile("");
@@ -258,10 +285,12 @@ static void Play()
 
 			ovCodec->width = 800;
 			ovCodec->height = 600;
-			ovCodec->pix_fmt = GetSupportedPixelFormat(ovCodec->codec,
-				AVPixelFormat::AV_PIX_FMT_YUV420P);
+			//ovCodec->pix_fmt = GetSupportedPixelFormat(ovCodec->codec,
+			//	AVPixelFormat::AV_PIX_FMT_YUV420P);
 
-			Sdl.InitVideo("Demo", ovCodec->width, ovCodec->height);
+			// For NVIDIA hardware acceleration, default pixel format is nv12
+			Sdl.InitVideo("Demo", ovCodec->width, ovCodec->height,
+				SDL_PIXELFORMAT_NV12);
 		}
 
 		if (Input->AudioParts.Stream)
@@ -394,6 +423,8 @@ static void RecordPCM()
 
 		ctx.Editor = &Editor;
 
+		auto Setting = Editor.GetSetting();
+
 		// Create an empty input context
 		auto Input = Editor.OpenInputFile("");
 		auto Output = Editor.AllocOutputFile("output.mp4");
@@ -406,7 +437,7 @@ static void RecordPCM()
 		// The following is example.
 
 		// Video Codec Context
-		auto vCodec = FCodecContext::FindDecodeCodec(AVCodecID::AV_CODEC_ID_RAWVIDEO);
+		auto vCodec = FindDecodeCodec(AVCodecID::AV_CODEC_ID_RAWVIDEO, Setting);
 		Input->VideoParts.Codec = std::make_shared<FCodecContext>();
 
 		AVCodecContext* InputVideoCodec = Input->VideoParts.Codec->Alloc(vCodec);
@@ -422,7 +453,7 @@ static void RecordPCM()
 		ctx.SetupInputParameter(InputVideoCodec);
 
 		// Audio Codec Context
-		auto aCodec = FCodecContext::FindDecodeCodec(AVCodecID::AV_CODEC_ID_FIRST_AUDIO);
+		auto aCodec = FindDecodeCodec(AVCodecID::AV_CODEC_ID_FIRST_AUDIO, Setting);
 		Input->AudioParts.Codec = std::make_shared<FCodecContext>();
 
 		AVCodecContext* InputAudioCodec = Input->AudioParts.Codec->Alloc(aCodec);
@@ -469,6 +500,7 @@ int main()
 	//SetupEditorLog();
 
 	//Cover();
+	//HwCover();
 	//Merge();
 	//DetachAudioStream();
 	//MixAudio();

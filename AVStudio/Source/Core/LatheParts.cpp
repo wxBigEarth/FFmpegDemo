@@ -6,7 +6,7 @@ namespace avstudio
 {
 	void FLatheParts::Release()
 	{
-		nShouldDecode = 0;
+		nFlag = 0;
 		nStreamIndex = -1;
 		Duration = 0;
 

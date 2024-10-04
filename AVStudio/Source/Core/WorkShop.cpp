@@ -9,10 +9,13 @@ namespace avstudio
 		Release();
 	}
 
-	void FWorkShop::Init(ECtxType n_eCtxType, const unsigned char n_nMediaMask)
+	void FWorkShop::Init(ECtxType n_eCtxType, 
+		const unsigned char n_nMediaMask /*= MEDIAMASK_AV*/, 
+		std::shared_ptr<FSetting> n_Setting /*= nullptr*/)
 	{
 		m_eCtxType = n_eCtxType;
 		m_nMediaMask = 0;
+		m_Setting = n_Setting;
 
 		if (!Fmt.IsValid()) return;
 
@@ -28,12 +31,12 @@ namespace avstudio
 				{
 					VideoParts.Stream = Fmt.FindStream(VideoParts.nStreamIndex);
 					VideoParts.Codec = std::make_shared<FCodecContext>();
+					// Maybe it has config hardware acceleration
+					VideoCodec = FindDecodeCodec(VideoCodec->id, m_Setting);
 
-					if (GetSetting()->bEnableHwAccel)
-						VideoCodec = FCodecContext::FindDecodeCodec(VideoCodec->id);
-
-					VideoParts.Codec->Alloc(VideoCodec);
+					VideoParts.Codec->Alloc(VideoCodec, m_Setting);
 					VideoParts.Codec->CopyCodecParameter(VideoParts.Stream);
+					VideoParts.Codec->ConfiguraHwAccel();
 
 					CombineMedia(m_nMediaMask, AVMediaType::AVMEDIA_TYPE_VIDEO);
 				}
@@ -49,7 +52,7 @@ namespace avstudio
 					AudioParts.Stream = Fmt.FindStream(AudioParts.nStreamIndex);
 					AudioParts.Codec = std::make_shared<FCodecContext>();
 
-					AudioParts.Codec->Alloc(AudioCodec);
+					AudioParts.Codec->Alloc(AudioCodec, m_Setting);
 					AudioParts.Codec->CopyCodecParameter(AudioParts.Stream);
 
 					CombineMedia(m_nMediaMask, AVMediaType::AVMEDIA_TYPE_AUDIO);
@@ -84,7 +87,7 @@ namespace avstudio
 			{
 				if (VideoParts.Codec && VideoParts.Codec->Context)
 				{
-					double a = VideoParts.Codec->Context->time_base.den /
+					double a = VideoParts.Codec->Context->time_base.den * 1.0 /
 						VideoParts.Codec->Context->time_base.num /
 						VideoParts.Codec->Context->framerate.num *
 						VideoParts.Codec->Context->framerate.den;
@@ -107,7 +110,7 @@ namespace avstudio
 			{
 				if (AudioParts.Codec && AudioParts.Codec->Context)
 				{
-					auto a = AudioParts.Codec->Context->time_base.den /
+					auto a = AudioParts.Codec->Context->time_base.den * 1.0 /
 						(double)AudioParts.Codec->Context->sample_rate *
 						AudioParts.Codec->Context->frame_size /
 						AudioParts.Codec->Context->time_base.num;
@@ -163,14 +166,15 @@ namespace avstudio
 	AVCodecID FWorkShop::GetCodecId(AVMediaType n_eMediaType)
 	{
 		AVCodecID eCodecId = AVCodecID::AV_CODEC_ID_NONE;
+		if (m_eCtxType != ECtxType::CT_Output) return eCodecId;
 
 		if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_VIDEO)
 		{
 			// Check desire codec id
 			if (VideoParts.DesireCodecId != AVCodecID::AV_CODEC_ID_NONE)
 			{
-				auto Codec = FCodecContext::FindEncodeCodec(
-					VideoParts.DesireCodecId);
+				auto Codec = FindEncodeCodec(
+					VideoParts.DesireCodecId, m_Setting);
 				// If VideoParts.DesireCodecId is not video codec, reset it
 				if (!Codec || Codec->type != AVMediaType::AVMEDIA_TYPE_VIDEO)
 					VideoParts.DesireCodecId = AVCodecID::AV_CODEC_ID_NONE;
@@ -186,8 +190,8 @@ namespace avstudio
 			// Check desire codec id
 			if (AudioParts.DesireCodecId != AVCodecID::AV_CODEC_ID_NONE)
 			{
-				auto Codec = FCodecContext::FindEncodeCodec(
-					AudioParts.DesireCodecId);
+				auto Codec = FindEncodeCodec(
+					AudioParts.DesireCodecId, m_Setting);
 				// If VideoParts.DesireCodecId is not audio codec, reset it
 				if (Codec->type != AVMediaType::AVMEDIA_TYPE_AUDIO)
 					AudioParts.DesireCodecId = AVCodecID::AV_CODEC_ID_NONE;
@@ -229,15 +233,16 @@ namespace avstudio
 		if (m_eCtxType != ECtxType::CT_Output) return Result;
 
 		auto eCodecId = n_Stream->codecpar->codec_id;
-		auto Codec = FCodecContext::FindEncodeCodec(eCodecId);
+		auto Codec = FindEncodeCodec(eCodecId, m_Setting);
 		if (!Codec) return Result;
 
 		if (n_Stream->codecpar->codec_type == AVMediaType::AVMEDIA_TYPE_VIDEO && 
 			IsCompriseMedia(m_nMediaMask, AVMediaType::AVMEDIA_TYPE_VIDEO))
 		{
 			VideoParts.Codec = std::make_shared<FCodecContext>();
-			auto ctx = VideoParts.Codec->Alloc(Codec);
+			auto ctx = VideoParts.Codec->Alloc(Codec, m_Setting);
 			VideoParts.Codec->CopyCodecParameter(n_Stream);
+			VideoParts.Codec->ConfiguraHwAccel();
 
 			ctx->framerate = n_Stream->r_frame_rate;
 			// if ctx->framerate.num too large, first frame will be gray
@@ -255,18 +260,18 @@ namespace avstudio
 
 			Result = VideoParts.Codec;
 
-			if (m_funcMiddleware) m_funcMiddleware(this);
+			if (m_funcMiddleware) m_funcMiddleware(Result->Context);
 		}
 		else if (n_Stream->codecpar->codec_type == AVMediaType::AVMEDIA_TYPE_AUDIO && 
 			IsCompriseMedia(m_nMediaMask, AVMediaType::AVMEDIA_TYPE_AUDIO))
 		{
 			AudioParts.Codec = std::make_shared<FCodecContext>();
-			AudioParts.Codec->Alloc(Codec);
+			AudioParts.Codec->Alloc(Codec, m_Setting);
 			AudioParts.Codec->CopyCodecParameter(n_Stream);
 
 			Result = AudioParts.Codec;
 
-			if (m_funcMiddleware) m_funcMiddleware(this);
+			if (m_funcMiddleware) m_funcMiddleware(Result->Context);
 		}
 
 		return Result;
@@ -281,7 +286,7 @@ namespace avstudio
 		// Make sure it's output context
 		if (m_eCtxType != ECtxType::CT_Output) return Result;
 
-		auto Codec = FCodecContext::FindEncodeCodec(n_eCodecID);
+		auto Codec = FindEncodeCodec(n_eCodecID, m_Setting);
 		if (!Codec) return Result;
 
 		if (Codec->type == AVMediaType::AVMEDIA_TYPE_AUDIO && 
@@ -291,7 +296,7 @@ namespace avstudio
 			if (!Result)
 			{
 				AudioParts.Codec = std::make_shared<FCodecContext>();
-				auto ctx = AudioParts.Codec->Alloc(Codec);
+				auto ctx = AudioParts.Codec->Alloc(Codec, m_Setting);
 				Result = AudioParts.Codec;
 
 				if (n_InputCodecContext)
@@ -311,7 +316,7 @@ namespace avstudio
 				CodecContextAddition(ctx);
 			}
 
-			if (m_funcMiddleware) m_funcMiddleware(this);
+			if (m_funcMiddleware) m_funcMiddleware(Result->Context);
 		}
 		else if (Codec->type == AVMediaType::AVMEDIA_TYPE_VIDEO && 
 			IsCompriseMedia(m_nMediaMask, Codec->type))
@@ -320,7 +325,7 @@ namespace avstudio
 			if (!Result)
 			{
 				VideoParts.Codec = std::make_shared<FCodecContext>();
-				auto ctx = VideoParts.Codec->Alloc(Codec);
+				auto ctx = VideoParts.Codec->Alloc(Codec, m_Setting);
 				Result = VideoParts.Codec;
 
 				if (n_InputCodecContext)
@@ -349,7 +354,7 @@ namespace avstudio
 				CodecContextAddition(ctx);
 			}
 
-			if (m_funcMiddleware) m_funcMiddleware(this);
+			if (m_funcMiddleware) m_funcMiddleware(Result->Context);
 		}
 
 		return Result;
@@ -451,7 +456,7 @@ namespace avstudio
 	void FWorkShop::OpenCodecContext(AVMediaType n_eMediaType)
 	{
 		if (VideoParts.Codec && 
-			(VideoParts.nShouldDecode || m_eCtxType == ECtxType::CT_Output) && 
+			(VideoParts.nFlag || m_eCtxType == ECtxType::CT_Output) && 
 			(n_eMediaType == AVMediaType::AVMEDIA_TYPE_VIDEO ||
 				n_eMediaType == AVMediaType::AVMEDIA_TYPE_UNKNOWN))
 		{
@@ -459,7 +464,7 @@ namespace avstudio
 		}
 
 		if (AudioParts.Codec && 
-			(AudioParts.nShouldDecode || m_eCtxType == ECtxType::CT_Output) &&
+			(AudioParts.nFlag || m_eCtxType == ECtxType::CT_Output) &&
 			(n_eMediaType == AVMediaType::AVMEDIA_TYPE_AUDIO ||
 				n_eMediaType == AVMediaType::AVMEDIA_TYPE_UNKNOWN))
 		{
@@ -467,18 +472,19 @@ namespace avstudio
 		}
 	}
 
-	void FWorkShop::CheckForDecoding(std::shared_ptr<FWorkShop> n_Output,
+	void FWorkShop::CreateFrameConverter(std::shared_ptr<FWorkShop> n_Output,
 		AVMediaType n_eMediaType /*= AVMediaType::AVMEDIA_TYPE_UNKNOWN*/)
 	{
+		if (m_eCtxType != ECtxType::CT_Input) return;
+
 		if ((n_eMediaType == AVMediaType::AVMEDIA_TYPE_VIDEO ||
 			n_eMediaType == AVMediaType::AVMEDIA_TYPE_UNKNOWN) &&
 			IsCompriseMedia(m_nMediaMask, AVMediaType::AVMEDIA_TYPE_VIDEO))
 		{
-			if (VideoParts.nShouldDecode <= 0)
-				VideoParts.nShouldDecode = CompareCodecFormat(
+			if (VideoParts.nFlag <= 0)
+				VideoParts.nFlag = CompareCodecFormat(
 					VideoParts.Codec, n_Output->VideoParts.Codec);
-			if (VideoParts.nShouldDecode > 0 &&
-				!VideoParts.Sws)
+			if (VideoParts.nFlag > 0 && !VideoParts.Sws)
 			{
 				VideoParts.Sws = std::make_shared<FSwsScale>();
 				VideoParts.Sws->Alloc(VideoParts.Codec->Context->width,
@@ -494,11 +500,10 @@ namespace avstudio
 			n_eMediaType == AVMediaType::AVMEDIA_TYPE_UNKNOWN) &&
 			IsCompriseMedia(m_nMediaMask, AVMediaType::AVMEDIA_TYPE_AUDIO))
 		{
-			if (AudioParts.nShouldDecode <= 0)
-				AudioParts.nShouldDecode = CompareCodecFormat(
+			if (AudioParts.nFlag <= 0)
+				AudioParts.nFlag = CompareCodecFormat(
 					AudioParts.Codec, n_Output->AudioParts.Codec);
-			if (AudioParts.nShouldDecode > 0 &&
-				!AudioParts.Resample)
+			if (AudioParts.nFlag > 0 && !AudioParts.Resample)
 			{
 				AudioParts.Resample = std::make_shared<FResample>();
 				AudioParts.Resample->Alloc(AudioParts.Codec->Context,
@@ -509,7 +514,7 @@ namespace avstudio
 		}
 	}
 
-	void FWorkShop::SetDecodeFlag(int n_nFlag, 
+	void FWorkShop::SetDecodeFlag(int n_nFlag,
 		AVMediaType n_eMediaType /*= AVMediaType::AVMEDIA_TYPE_UNKNOWN*/)
 	{
 		if (m_eCtxType != ECtxType::CT_Input) return;
@@ -520,8 +525,8 @@ namespace avstudio
 		{
 			if (VideoParts.Codec)
 			{
-				VideoParts.nShouldDecode = n_nFlag;
-				if (VideoParts.nShouldDecode == 0)
+				VideoParts.nFlag = n_nFlag;
+				if (VideoParts.nFlag == 0)
 					VideoParts.Codec.reset();
 			}
 		}
@@ -532,8 +537,8 @@ namespace avstudio
 		{
 			if (AudioParts.Codec)
 			{
-				AudioParts.nShouldDecode = n_nFlag;
-				if (AudioParts.nShouldDecode == 0)
+				AudioParts.nFlag = n_nFlag;
+				if (AudioParts.nFlag == 0)
 					AudioParts.Codec.reset();
 			}
 		}
@@ -689,7 +694,8 @@ namespace avstudio
 		return nResult;
 	}
 
-	void FWorkShop::SetupMiddleware(std::function<void(FWorkShop*)> n_func)
+	void FWorkShop::SetupMiddleware(
+		std::function<void(AVCodecContext*)> n_func)
 	{
 		m_funcMiddleware = n_func;
 	}

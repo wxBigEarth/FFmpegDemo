@@ -3,26 +3,19 @@
 
 namespace avstudio
 {
-	static FSetting g_Setting;
-
-	FSetting* GetSetting()
+	void FSetting::SetGraphicCardType(EGraphicCard n_eCard)
 	{
-		return &g_Setting;
-	}
+		eGraphicCard = n_eCard;
 
-	void FSetting::SetGraphicCardType(int n_nCard)
-	{
-		nGraphicCard = n_nCard;
-
-		switch (n_nCard)
+		switch (eGraphicCard)
 		{
-		case kGraphicCardNvidia:
+		case EGraphicCard::GC_Nvidia:
 			eHwDevice = AVHWDeviceType::AV_HWDEVICE_TYPE_CUDA;
 			break;
-		case kGraphicCardAmd:
+		case EGraphicCard::GC_Amd:
 			eHwDevice = AVHWDeviceType::AV_HWDEVICE_TYPE_VAAPI;
 			break;
-		case kGraphicCardIntel:
+		case EGraphicCard::GC_Intel:
 			eHwDevice = AVHWDeviceType::AV_HWDEVICE_TYPE_QSV;
 			break;
 		default:
@@ -30,13 +23,14 @@ namespace avstudio
 		}
 	}
 
-	const int FSetting::GetGraphicCard() const
+	const EGraphicCard FSetting::GetGraphicCard() const
 	{
-		return nGraphicCard;
+		return eGraphicCard;
 	}
 
 	const AVHWDeviceType FSetting::GetHwDeviceType() const
 	{
 		return eHwDevice;
 	}
+
 }

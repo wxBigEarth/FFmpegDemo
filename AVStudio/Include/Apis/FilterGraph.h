@@ -79,13 +79,9 @@ namespace avstudio
 	protected:
 	};
 
-	extern "C"
-	{
-		void FilterVideoOption(AVFilterContext* n_FilterContext,
-			AVCodecContext* n_CodecContext);
-		void FilterAudioOption(AVFilterContext* n_FilterContext,
-			AVCodecContext* n_CodecContext);
-
-	}
+	void FilterVideoOption(AVFilterContext* n_FilterContext,
+		AVCodecContext* n_CodecContext);
+	void FilterAudioOption(AVFilterContext* n_FilterContext,
+		AVCodecContext* n_CodecContext);
 }
 #endif // __FILTERGRAPH_H__

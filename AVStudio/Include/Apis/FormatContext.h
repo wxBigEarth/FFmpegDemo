@@ -77,29 +77,25 @@ namespace avstudio
 	};
 
 
-	extern "C"
-	{
-		// Get the sample format supported by n_Codec, the n_eSampleFormat comes first
-		AVSampleFormat GetSupportedSampleFormat(const AVCodec* n_Codec, 
-			enum AVSampleFormat n_eSampleFormat);
-		// Get the sample rate supported by n_Codec, select the most closest to n_nSampleRate
-		int GetSupportedSampleRate(const AVCodec* n_Codec, int n_nSampleRate);
-		// Get layout with the highest channel count
-		int GetSupportedChannelLayout(const AVCodec* n_Codec, 
-			AVChannelLayout* n_ChannelLayout);
+	// Get the sample format supported by n_Codec, the n_eSampleFormat comes first
+	AVSampleFormat GetSupportedSampleFormat(const AVCodec* n_Codec, 
+		enum AVSampleFormat n_eSampleFormat);
+	// Get the sample rate supported by n_Codec, select the most closest to n_nSampleRate
+	int GetSupportedSampleRate(const AVCodec* n_Codec, int n_nSampleRate);
+	// Get layout with the highest channel count
+	int GetSupportedChannelLayout(const AVCodec* n_Codec, 
+		AVChannelLayout* n_ChannelLayout);
 
-		// Get pixel format supported by n_Codec, the n_ePixelFormat comes first
-		AVPixelFormat GetSupportedPixelFormat(const AVCodec* n_Codec, 
-			AVPixelFormat n_ePixelFormat);
-		// Get the frame rate supported by n_Codec, select the most closest to n_FrameRate
-		AVRational GetSupportedFrameRate(const AVCodec* n_Codec, 
-			const AVRational& n_FrameRate);
+	// Get pixel format supported by n_Codec, the n_ePixelFormat comes first
+	AVPixelFormat GetSupportedPixelFormat(const AVCodec* n_Codec, 
+		AVPixelFormat n_ePixelFormat);
+	// Get the frame rate supported by n_Codec, select the most closest to n_FrameRate
+	AVRational GetSupportedFrameRate(const AVCodec* n_Codec, 
+		const AVRational& n_FrameRate);
 
-		int FindStreamIndex(AVFormatContext* n_FormatContext, AVMediaType n_eMediaType);
+	int FindStreamIndex(AVFormatContext* n_FormatContext, AVMediaType n_eMediaType);
 
-		const AVInputFormat* FindInputFormat(const std::string& n_sShortName);
-
-	}
+	const AVInputFormat* FindInputFormat(const std::string& n_sShortName);
 }
 
 #endif // __FORMATCONTEXT_H__

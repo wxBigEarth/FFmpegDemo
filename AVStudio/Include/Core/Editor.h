@@ -4,6 +4,7 @@
 #include "Core/Factory.h"
 #include "Util/Thread.h"
 #include "IO/IOHandle.h"
+#include "Util/Setting.h"
 
 
 namespace avstudio
@@ -40,6 +41,9 @@ namespace avstudio
 		// Get the input context by index
 		std::shared_ptr<FWorkShop> GetInputContext(const unsigned int n_nIndex);
 
+		// Get setting object pointer
+		std::shared_ptr<FSetting> GetSetting();
+
 		// Usually for writing PCM data
 		int WriteFrame(AVFrame* n_Frame, AVMediaType n_eMediaType, 
 			unsigned int n_nInputIndex = 0);
@@ -53,8 +57,10 @@ namespace avstudio
 			AVMediaType n_eMediaType,
 			unsigned int n_nInputIndex = 0);
 
+		// Setup IO handle, Caller can define what to do with output data
 		void SetIoHandle(std::shared_ptr<IIOHandle> n_Handle);
 
+		// Set pause or not
 		void SetPause(bool n_bPause);
 
 	protected:
@@ -68,7 +74,7 @@ namespace avstudio
 		void RunByGroup(const std::vector<size_t>& n_vInputs, bool n_bIsLast);
 
 		// Initialize default IOHandle
-		void SetupDefaultIoHandle();
+		void SetupIoHandle();
 
 		// Number of data in the buffer
 		size_t GetBufferSize(AVMediaType n_eMediaType);
@@ -87,6 +93,8 @@ namespace avstudio
 		std::shared_ptr<FWorkShop>				m_Output = nullptr;
 		// IO handle for data stream
 		std::shared_ptr<IIOHandle>				m_IoHandle = nullptr;
+		// Setting
+		std::shared_ptr<FSetting>				m_Setting = nullptr;
 
 		// If [m_IoHandle] is set by AVStudio, it should be free when release
 		bool		m_bFreeHandle = false;

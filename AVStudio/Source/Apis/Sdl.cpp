@@ -1,7 +1,13 @@
 #include "Apis/Sdl.h"
 #include "Util/Debug.h"
 #include "Util/MediaMask.h"
-
+#ifdef __cplusplus
+extern "C" {
+#endif
+#include <libavutil/pixfmt.h>
+#ifdef __cplusplus
+};
+#endif
 
 namespace avstudio
 {
@@ -33,7 +39,8 @@ namespace avstudio
 	}
 
 	void FSdl::InitVideo(const char* n_szTitle,
-		const int n_nWidth, const int n_nHeight)
+		const int n_nWidth, const int n_nHeight,
+		unsigned int n_nPixFmt /*= SDL_PIXELFORMAT_IYUV*/)
 	{
 		if (m_Window) return;
 
@@ -51,13 +58,13 @@ namespace avstudio
 			"Fail to create window: %s.\n", SDL_GetError());
 
 		CreateRenderer(m_Window);
-
-		CreateTexture(SDL_PIXELFORMAT_IYUV);
+		CreateTexture(n_nPixFmt);
 		
 		m_nDisplayEvent = SDL_RegisterEvents(1);
 	}
 
-	void FSdl::InitVideo(const void* n_WinId)
+	void FSdl::InitVideo(const void* n_WinId,
+		unsigned int n_nPixFmt /*= SDL_PIXELFORMAT_IYUV*/)
 	{
 		if (m_Window) return;
 
@@ -70,8 +77,7 @@ namespace avstudio
 			"Fail to create window: %s.\n", SDL_GetError());
 
 		CreateRenderer(m_Window);
-
-		CreateTexture(SDL_PIXELFORMAT_IYUV);
+		CreateTexture(n_nPixFmt);
 
 		m_nDisplayEvent = SDL_RegisterEvents(1);
 	}
@@ -132,14 +138,29 @@ namespace avstudio
 	{
 		if (!m_Texture || !m_Renderer || m_nPause || !n_Frame) return;
 
-		SDL_UpdateYUVTexture(m_Texture, &m_Rect,
-			n_Frame->data[0], n_Frame->linesize[0],
-			n_Frame->data[1], n_Frame->linesize[1],
-			n_Frame->data[2], n_Frame->linesize[2]);
+		auto ret = 0;
+		auto ePixFmt = (AVPixelFormat)n_Frame->format;
 
-		SDL_RenderClear(m_Renderer);
-		SDL_RenderCopy(m_Renderer, m_Texture, nullptr, &m_Rect);
-		SDL_RenderPresent(m_Renderer);
+		if (ePixFmt == AVPixelFormat::AV_PIX_FMT_NV12 ||
+			ePixFmt == AVPixelFormat::AV_PIX_FMT_NV21)
+			ret = SDL_UpdateNVTexture(m_Texture, &m_Rect,
+				n_Frame->data[0], n_Frame->linesize[0],
+				n_Frame->data[1], n_Frame->linesize[1]);
+		else
+			ret = SDL_UpdateYUVTexture(m_Texture, &m_Rect,
+				n_Frame->data[0], n_Frame->linesize[0],
+				n_Frame->data[1], n_Frame->linesize[1],
+				n_Frame->data[2], n_Frame->linesize[2]);
+
+		if (ret == 0)
+		{
+			SDL_RenderClear(m_Renderer);
+			SDL_RenderCopy(m_Renderer, m_Texture, nullptr, &m_Rect);
+			SDL_RenderPresent(m_Renderer);
+		}
+		else
+			AVDebug("Warning: Fail to render frame on the window,Error: %s\n",
+				SDL_GetError());
 	}
 
 	void FSdl::UpdateAudio(AVFrame* n_Frame,
