@@ -57,4 +57,5 @@ FSetting: Settings about hardware acceleration on codec
 ///////////////////////////////////////////////////////////////////////////////////////////
 
 FFmpegDemo
+
 	A demo about how to use AVStudio.dll.  

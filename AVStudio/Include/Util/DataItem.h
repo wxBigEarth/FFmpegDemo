@@ -35,11 +35,17 @@ namespace avstudio
 	// Clone AVFrame or AVPacket
 	void* AVClone(EDataType n_eDataType, void* n_Data);
 
-	// Free AVPacket/AVFrame by DataType
+	// Free FDataItem and set n_DataItem to nullptr
 	void AVFreeDataPtr(FDataItem** n_DataItem);
 
-	// Free AVPacket/AVFrame by DataType
+	// Free FDataItem
 	void AVFreeData(FDataItem* n_DataItem);
+
+	// Free AVFrame
+	void AVFreeData(AVFrame** n_Frame);
+
+	// Free AVPacket
+	void AVFreeData(AVPacket** n_Packet);
 }
 
 #endif // !__DATAITEM_H__

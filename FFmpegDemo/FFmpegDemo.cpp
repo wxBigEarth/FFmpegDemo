@@ -241,7 +241,7 @@ public:
 
 	void SDL_ReadEnd(AVFrame* n_Frame) override
 	{
-		if (!n_Frame) av_frame_free(&n_Frame);
+		AVFreeData(&n_Frame);
 	}
 
 	void SDL_Stop() override

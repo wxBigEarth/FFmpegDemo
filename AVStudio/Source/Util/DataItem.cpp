@@ -56,17 +56,27 @@ namespace avstudio
 			break;
 		case EDataType::DT_Packet:
 		{
-			if (n_DataItem->Data) av_packet_free((AVPacket**)&n_DataItem->Data);
+			AVFreeData((AVPacket**)&n_DataItem->Data);
 		}
 		break;
 		case EDataType::DT_Frame:
 		{
-			if (n_DataItem->Data) av_frame_free((AVFrame**)&n_DataItem->Data);
+			AVFreeData((AVFrame**)&n_DataItem->Data);
 		}
 		break;
 		default:
 			break;
 		}
+	}
+
+	void AVFreeData(AVFrame** n_Frame)
+	{
+		if (n_Frame) av_frame_free(n_Frame);
+	}
+
+	void AVFreeData(AVPacket** n_Packet)
+	{
+		if (n_Packet) av_packet_free(n_Packet);
 	}
 
 }
