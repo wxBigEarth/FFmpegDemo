@@ -27,7 +27,7 @@ static void Cover()
 	{
 		CEditor Editor;
 
-#if 1
+#if 0
 		auto Input = Editor.OpenInputFile("1.mp4");
 		auto Output = Editor.AllocOutputFile("1.avi");
 #else
@@ -258,11 +258,10 @@ static void Play()
 	try
 	{
 		CEditor Editor;
-		//OutputPlayer op;
 		auto Player = std::make_shared<CPlayer>();
 		FSdl Sdl;
 
-		// Frames will be sent to op
+		// Frames will be sent to Player
 		Editor.SetIoHandle(Player);
 
 		auto Setting = Editor.GetSetting();

@@ -16,7 +16,7 @@ namespace avstudio
 		// For input context, indicates weather it should be decoded
 		// For output context, not use
 		int				nFlag = 0;
-		// Index of video stream, -1: invalid
+		// Index of stream, -1: invalid
 		int				nStreamIndex = -1;
 
 		/*

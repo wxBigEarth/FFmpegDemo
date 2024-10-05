@@ -213,10 +213,13 @@ namespace avstudio
 						n_Frame->pict_type = AVPictureType::AV_PICTURE_TYPE_P;
 					}
 
-					if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_AUDIO &&
-						iLatheParts->Codec->Context->codec_id == AVCodecID::AV_CODEC_ID_MP3 &&
-						n_Frame->nb_samples < iLatheParts->Codec->Context->frame_size)
-						return 0;
+					if (iLatheParts->Codec->Context->codec_id == AVCodecID::AV_CODEC_ID_MP3 &&
+						m_bFirstMp3Frame)
+					{
+						m_bFirstMp3Frame = false;
+						if (n_Frame->nb_samples < iLatheParts->Codec->Context->frame_size)
+							return 0;
+					}
 
 					n_Frame->time_base = iLatheParts->Codec->Context->time_base;
 				}

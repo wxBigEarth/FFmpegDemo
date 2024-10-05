@@ -77,6 +77,10 @@ namespace avstudio
 		bool		m_bIsLastItem = false;
 		// Indicate if current group is the last one
 		bool		m_bIsLastGroup = false;
+
+		// If codec id is mp3 for audio stream, maybe nb_samples of first frame
+		// is less than 1152, discard it. But the last frame could not be discarded
+		bool		m_bFirstMp3Frame = true;
 	};
 }
 
