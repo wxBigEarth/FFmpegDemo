@@ -264,6 +264,7 @@ static void Play()
 		// Frames will be sent to Player
 		Editor.SetIoHandle(Player);
 
+		// Enable hardware acceleration
 		auto Setting = Editor.GetSetting();
 		Setting->bEnableHwAccel = true;
 
@@ -287,8 +288,7 @@ static void Play()
 			//	AVPixelFormat::AV_PIX_FMT_YUV420P);
 
 			// For NVIDIA hardware acceleration, default pixel format is nv12
-			Sdl.InitVideo("Demo", ovCodec->width, ovCodec->height,
-				SDL_PIXELFORMAT_NV12);
+			Sdl.InitVideo("Demo", ovCodec->width, ovCodec->height, SDL_PIXELFORMAT_NV12);
 		}
 
 		if (Input->AudioParts.Stream)

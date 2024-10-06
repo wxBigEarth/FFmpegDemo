@@ -160,9 +160,12 @@ namespace avstudio
 				}
 				break;
 			case SDL_WINDOWEVENT:
-				if (Event.window.event == 0x0005) /* WM_SIZE */
+				if (Event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED)
 				{
-					SDL_GetWindowSize(m_Window, &m_Rect.w, &m_Rect.h);
+					SDL_DestroyTexture(m_Texture);
+					SDL_DestroyRenderer(m_Renderer);
+					CreateRenderer(m_Window);
+					CreateTexture(m_nPixFmt);
 				}
 				break;
 			default:
@@ -211,6 +214,7 @@ namespace avstudio
 	void FSdl::Stop()
 	{
 		m_eStatus = ESdlStatus::SS_Stop;
+		SDL_PauseAudio(0);
 	}
 
 	void FSdl::Release()
@@ -225,6 +229,7 @@ namespace avstudio
 
 		m_Texture = nullptr;
 		m_Renderer = nullptr;
+		m_Window = nullptr;
 		memset(&m_Rect, 0, sizeof(SDL_Rect));
 	}
 
@@ -260,11 +265,16 @@ namespace avstudio
 			SDL_TEXTUREACCESS_STREAMING,
 			m_Rect.w,
 			m_Rect.h);
+		ThrowExceptionExpr(!m_Texture,
+			"Fail to create texture: %s.\n", SDL_GetError());
+
+		m_nPixFmt = n_nPixFmt;
 	}
 
 	void FSdl::CreateRenderer(SDL_Window* n_Window)
 	{
-		m_Renderer = SDL_CreateRenderer(n_Window, -1, 0);
+		m_Renderer = SDL_GetRenderer(m_Window);
+		if (!m_Renderer) m_Renderer = SDL_CreateRenderer(n_Window, -1, 0);
 		ThrowExceptionExpr(!m_Renderer,
 			"Fail to create renderer: %s.\n", SDL_GetError());
 	}
@@ -328,13 +338,15 @@ namespace avstudio
 		auto ret = 0;
 		auto ePixFmt = (AVPixelFormat)n_Frame->format;
 
+		SDL_Rect rcFrame = { 0, 0, n_Frame->width, n_Frame->height };
+
 		if (ePixFmt == AVPixelFormat::AV_PIX_FMT_NV12 ||
 			ePixFmt == AVPixelFormat::AV_PIX_FMT_NV21)
-			ret = SDL_UpdateNVTexture(m_Texture, &m_Rect,
+			ret = SDL_UpdateNVTexture(m_Texture, &rcFrame,
 				n_Frame->data[0], n_Frame->linesize[0],
 				n_Frame->data[1], n_Frame->linesize[1]);
 		else
-			ret = SDL_UpdateYUVTexture(m_Texture, &m_Rect,
+			ret = SDL_UpdateYUVTexture(m_Texture, &rcFrame,
 				n_Frame->data[0], n_Frame->linesize[0],
 				n_Frame->data[1], n_Frame->linesize[1],
 				n_Frame->data[2], n_Frame->linesize[2]);
@@ -342,7 +354,7 @@ namespace avstudio
 		if (ret == 0)
 		{
 			SDL_RenderClear(m_Renderer);
-			SDL_RenderCopy(m_Renderer, m_Texture, nullptr, &m_Rect);
+			SDL_RenderCopy(m_Renderer, m_Texture, &rcFrame, &m_Rect);
 			//SDL_RenderPresent(m_Renderer);
 		}
 		else
@@ -357,30 +369,27 @@ namespace avstudio
 
 		SDL_memset(n_Stream, 0, n_nLen);
 
-		std::string sSamples;
-
-		sSamples.resize(n_nLen);
-
 		if (m_nPlanar == 0)
 		{
-			memcpy_s((char*)sSamples.c_str(), n_nLen, n_Frame->data[0], n_nLen);
+			//SDL_MixAudio(n_Stream, n_Frame->data[0], n_nLen, SDL_MIX_MAXVOLUME);
+			memcpy_s(n_Stream, n_nLen, n_Frame->data[0], 
+				(rsize_t)(n_Frame->nb_samples) * m_nChannels * m_nBytesPerSample);
 		}
 		else
 		{
-			int k = 0;
+			auto p = n_Stream;
+
 			for (int i = 0; i < n_Frame->nb_samples; i++)
 			{
 				for (int j = 0; j < m_nChannels; j++)
 				{
-					memcpy_s((char*)sSamples.c_str() + k, m_nBytesPerSample,
+					memcpy_s(p, m_nBytesPerSample,
 						&n_Frame->data[j][m_nBytesPerSample * i], m_nBytesPerSample);
 
-					k += m_nBytesPerSample;
+					p += m_nBytesPerSample;
 				}
 			}
 		}
-
-		SDL_MixAudio(n_Stream, (const Uint8*)sSamples.data(), n_nLen, SDL_MIX_MAXVOLUME);
 	}
 
 }

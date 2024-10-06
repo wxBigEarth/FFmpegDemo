@@ -120,6 +120,8 @@ namespace avstudio
 		unsigned char	m_nMediaMask = 0;
 		// Event that display video
 		unsigned int	m_nDisplayEvent = 0;
+		// Pixel format of SDL
+		unsigned int	m_nPixFmt = SDL_PIXELFORMAT_IYUV;
 		
 		// Channel count
 		int				m_nChannels = 1;
