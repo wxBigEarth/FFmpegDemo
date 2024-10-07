@@ -28,7 +28,7 @@ namespace avstudio
 		DataArrived(n_eMediaType);
 
 		void* Data = n_Data;
-		if (m_bClone) Data = AVClone(n_eDataType, n_Data);
+		if (m_bClone) Data = AVCloneRef(n_eDataType, n_Data);
 
 		return ReceiveData(n_eMediaType, n_eDataType, Data);
 	}

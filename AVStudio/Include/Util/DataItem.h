@@ -32,8 +32,8 @@ namespace avstudio
 		AVFrame*	f();
 	};
 
-	// Clone AVFrame or AVPacket
-	void* AVClone(EDataType n_eDataType, void* n_Data);
+	// Alloc an AVFrame or AVPacket object, and move ref from n_Data
+	void* AVCloneRef(EDataType n_eDataType, void* n_Data);
 
 	// Free FDataItem and set n_DataItem to nullptr
 	void AVFreeDataPtr(FDataItem** n_DataItem);

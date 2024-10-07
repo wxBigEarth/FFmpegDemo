@@ -239,11 +239,6 @@ public:
 		return Frame;
 	}
 
-	void SDL_ReadEnd(AVFrame* n_Frame) override
-	{
-		AVFreeData(&n_Frame);
-	}
-
 	void SDL_Stop() override
 	{
 		// close SDL window

@@ -62,6 +62,9 @@ namespace avstudio
 		std::list<AVFrame*> m_lstVideo;
 		std::list<AVFrame*> m_lstAudio;
 
+		AVFrame*			m_vFrame = nullptr;
+		AVFrame*			m_aFrame = nullptr;
+
 		std::mutex			m_mutex;
 
 		// The audio time length since playing

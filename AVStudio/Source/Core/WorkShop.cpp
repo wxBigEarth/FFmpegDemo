@@ -463,6 +463,8 @@ namespace avstudio
 
 	void FWorkShop::OpenCodecContext(AVMediaType n_eMediaType)
 	{
+		if (!IsValid()) return;
+
 		if (VideoParts.Codec && 
 			(VideoParts.nFlag || m_eCtxType == ECtxType::CT_Output) && 
 			(n_eMediaType == AVMediaType::AVMEDIA_TYPE_VIDEO ||

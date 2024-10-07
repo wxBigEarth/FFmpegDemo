@@ -14,7 +14,7 @@ namespace avstudio
 		return (AVFrame*)Data;
 	}
 
-	void* AVClone(EDataType n_eDataType, void* n_Data)
+	void* AVCloneRef(EDataType n_eDataType, void* n_Data)
 	{
 		void* Data = nullptr;
 

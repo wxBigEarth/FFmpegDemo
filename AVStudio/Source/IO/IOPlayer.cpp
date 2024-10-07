@@ -84,6 +84,9 @@ namespace avstudio
 		m_dAudioQ = 0;
 		m_dVideoTime = 0;
 		m_dVideoQ = 0;
+
+		if (m_vFrame) av_frame_free(&m_vFrame);
+		if (m_aFrame) av_frame_free(&m_aFrame);
 	}
 
 	int CIOPlayer::PopVideo(AVFrame*& n_Frame)
@@ -100,8 +103,12 @@ namespace avstudio
 		// Maybe it will force stop by user
 		if (m_evStatus == EIOStatus::IO_Done) return 0;
 
-		n_Frame = m_lstVideo.front();
+		auto Frame = m_lstVideo.front();
 		m_lstVideo.pop_front();
+
+		m_vFrame = (AVFrame*)AVCloneRef(EDataType::DT_Frame, Frame);
+		AVFreeData(&Frame);
+		n_Frame = m_vFrame;
 
 		if (m_dVideoQ == 0)
 			m_dVideoQ = av_q2d(n_Frame->time_base);
@@ -122,8 +129,12 @@ namespace avstudio
 		// Maybe it will force stop by user
 		if (m_evStatus == EIOStatus::IO_Done) return 0;
 
-		n_Frame = m_lstAudio.front();
+		auto Frame = m_lstAudio.front();
 		m_lstAudio.pop_front();
+
+		m_aFrame = (AVFrame*)AVCloneRef(EDataType::DT_Frame, Frame);
+		AVFreeData(&Frame);
+		n_Frame = m_aFrame;
 
 		if (m_dAudioQ == 0)
 			m_dAudioQ = av_q2d(n_Frame->time_base);

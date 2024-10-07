@@ -115,16 +115,15 @@ namespace avstudio
 		SDL_Renderer*	m_Renderer = nullptr;
 		SDL_Texture*	m_Texture = nullptr;
 		SDL_Rect		m_Rect = { 0 };
+		SDL_mutex*		m_Mutex = nullptr;
 
 		// Indicate selected streams
 		unsigned char	m_nMediaMask = 0;
-		// Event that display video
+		// Event id that display video
 		unsigned int	m_nDisplayEvent = 0;
 		// Pixel format of SDL
 		unsigned int	m_nPixFmt = SDL_PIXELFORMAT_IYUV;
 		
-		// Channel count
-		int				m_nChannels = 1;
 		// If the input context is planar
 		int				m_nPlanar = 0;
 		// The size of one sample

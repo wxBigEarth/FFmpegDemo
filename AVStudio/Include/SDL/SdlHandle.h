@@ -16,7 +16,7 @@ namespace avstudio
 	public:
 		// Read frame data
 		virtual AVFrame* SDL_ReadFrame(AVMediaType n_eMediaType) = 0;
-		// What to do with the frame after playing
+		// What to do with the frame after playing, EG: free n_Frame memory
 		virtual void SDL_ReadEnd(AVFrame* n_Frame) {}
 		// Quit
 		virtual void SDL_Stop() {}

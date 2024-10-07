@@ -64,6 +64,7 @@ namespace avstudio
 		CreateTexture(n_nPixFmt);
 		
 		m_nDisplayEvent = SDL_RegisterEvents(1);
+		m_Mutex = SDL_CreateMutex();
 	}
 
 	void FSdl::InitVideo(const void* n_WinId,
@@ -83,6 +84,7 @@ namespace avstudio
 		CreateTexture(n_nPixFmt);
 
 		m_nDisplayEvent = SDL_RegisterEvents(1);
+		m_Mutex = SDL_CreateMutex();
 	}
 
 	void FSdl::InitAudio(
@@ -130,7 +132,6 @@ namespace avstudio
 		int ret = SDL_OpenAudio(&AudioSpec, nullptr);
 		ThrowExceptionExpr(ret, "Fail to open audio: %s.\n", SDL_GetError());
 
-		m_nChannels = AudioSpec.channels;
 		m_nPlanar = av_sample_fmt_is_planar(n_nSampleFormat);
 		m_nBytesPerSample = av_get_bytes_per_sample(n_nSampleFormat);;
 
@@ -162,10 +163,12 @@ namespace avstudio
 			case SDL_WINDOWEVENT:
 				if (Event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED)
 				{
+					SDL_LockMutex(m_Mutex);
 					SDL_DestroyTexture(m_Texture);
 					SDL_DestroyRenderer(m_Renderer);
 					CreateRenderer(m_Window);
 					CreateTexture(m_nPixFmt);
+					SDL_UnlockMutex(m_Mutex);
 				}
 				break;
 			default:
@@ -224,12 +227,14 @@ namespace avstudio
 		if (m_Texture) SDL_DestroyTexture(m_Texture);
 		if (m_Renderer) SDL_DestroyRenderer(m_Renderer);
 		if (m_Window) SDL_DestroyWindow(m_Window);
+		if (m_Mutex) SDL_DestroyMutex(m_Mutex);
 		SDL_CloseAudio();
 		SDL_Quit();
 
 		m_Texture = nullptr;
 		m_Renderer = nullptr;
 		m_Window = nullptr;
+		m_Mutex = nullptr;
 		memset(&m_Rect, 0, sizeof(SDL_Rect));
 	}
 
@@ -335,6 +340,8 @@ namespace avstudio
 		if (!n_Frame || !m_Texture || !m_Renderer ||
 			m_eStatus != ESdlStatus::SS_Play) return;
 
+		SDL_LockMutex(m_Mutex);
+
 		auto ret = 0;
 		auto ePixFmt = (AVPixelFormat)n_Frame->format;
 
@@ -350,6 +357,8 @@ namespace avstudio
 				n_Frame->data[0], n_Frame->linesize[0],
 				n_Frame->data[1], n_Frame->linesize[1],
 				n_Frame->data[2], n_Frame->linesize[2]);
+
+		SDL_UnlockMutex(m_Mutex);
 
 		if (ret == 0)
 		{
@@ -373,7 +382,7 @@ namespace avstudio
 		{
 			//SDL_MixAudio(n_Stream, n_Frame->data[0], n_nLen, SDL_MIX_MAXVOLUME);
 			memcpy_s(n_Stream, n_nLen, n_Frame->data[0], 
-				(rsize_t)(n_Frame->nb_samples) * m_nChannels * m_nBytesPerSample);
+				(rsize_t)(n_Frame->nb_samples) * n_Frame->ch_layout.nb_channels * m_nBytesPerSample);
 		}
 		else
 		{
@@ -381,7 +390,7 @@ namespace avstudio
 
 			for (int i = 0; i < n_Frame->nb_samples; i++)
 			{
-				for (int j = 0; j < m_nChannels; j++)
+				for (int j = 0; j < n_Frame->ch_layout.nb_channels; j++)
 				{
 					memcpy_s(p, m_nBytesPerSample,
 						&n_Frame->data[j][m_nBytesPerSample * i], m_nBytesPerSample);
