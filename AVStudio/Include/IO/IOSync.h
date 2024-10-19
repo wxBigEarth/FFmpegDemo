@@ -48,7 +48,7 @@ namespace avstudio
 		FDataItem*			m_aItem = nullptr;
 
 		/*
-		* Indicate if the stream is coming data
+		* Indicate if the stream has coming data
 		*/
 		unsigned char		m_nReady = 0;
 	};

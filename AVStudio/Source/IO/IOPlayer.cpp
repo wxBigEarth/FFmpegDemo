@@ -13,7 +13,7 @@ namespace avstudio
 
 	CIOPlayer::~CIOPlayer()
 	{
-
+		Release2();
 	}
 
 	int CIOPlayer::WriteData(const AVMediaType n_eMediaType, 
@@ -52,6 +52,8 @@ namespace avstudio
 
 	void CIOPlayer::Processing()
 	{
+		Release2();
+
 		IIOHandle::Processing();
 
 		Join();
@@ -61,6 +63,11 @@ namespace avstudio
 	}
 
 	void CIOPlayer::Release()
+	{
+
+	}
+
+	void CIOPlayer::Release2()
 	{
 		IIOHandle::Release();
 
@@ -89,24 +96,26 @@ namespace avstudio
 		if (m_aFrame) av_frame_free(&m_aFrame);
 	}
 
+	void CIOPlayer::SetupCallback(FCallback<void, EIOPEventId> n_cb)
+	{
+		m_PlayerCb = n_cb;
+	}
+
 	int CIOPlayer::PopVideo(AVFrame*& n_Frame)
 	{
 		n_Frame = nullptr;
-		m_dVideoTime = AV_NOPTS_VALUE;
+		m_dVideoTime = AVERROR(EAGAIN);
+
+		// Maybe it will force stop by user
+		if (m_evStatus == EIOStatus::IO_Done) return AVERROR_EOF;
 
 		std::unique_lock<std::mutex> lock(m_mutex);
-		if (m_lstVideo.size() == 0)
-		{
-			m_dVideoTime = AVERROR(EAGAIN);
-			return -1;
-		}
-		// Maybe it will force stop by user
-		if (m_evStatus == EIOStatus::IO_Done) return 0;
+		if (m_lstVideo.size() == 0) return AVERROR(EAGAIN);
 
 		auto Frame = m_lstVideo.front();
 		m_lstVideo.pop_front();
 
-		m_vFrame = (AVFrame*)AVCloneRef(EDataType::DT_Frame, Frame);
+		m_vFrame = (AVFrame*)AVCloneRef(EDataType::DT_Frame, Frame, m_vFrame);
 		AVFreeData(&Frame);
 		n_Frame = m_vFrame;
 
@@ -115,7 +124,10 @@ namespace avstudio
 		if (n_Frame)
 			m_dVideoTime = n_Frame->pts * m_dVideoQ;
 		else
+		{
 			m_evStatus = EIOStatus::IO_Done;
+			if (IsAllStreamDone()) PlayEnd();
+		}
 
 		return 0;
 	}
@@ -124,15 +136,16 @@ namespace avstudio
 	{
 		n_Frame = nullptr;
 
-		std::unique_lock<std::mutex> lock(m_mutex);
-		if (m_lstAudio.size() == 0) return -1;
 		// Maybe it will force stop by user
-		if (m_evStatus == EIOStatus::IO_Done) return 0;
+		if (m_eaStatus == EIOStatus::IO_Done) return AVERROR_EOF;
+
+		std::unique_lock<std::mutex> lock(m_mutex);
+		if (m_lstAudio.size() == 0) return AVERROR(EAGAIN);
 
 		auto Frame = m_lstAudio.front();
 		m_lstAudio.pop_front();
 
-		m_aFrame = (AVFrame*)AVCloneRef(EDataType::DT_Frame, Frame);
+		m_aFrame = (AVFrame*)AVCloneRef(EDataType::DT_Frame, Frame, m_aFrame);
 		AVFreeData(&Frame);
 		n_Frame = m_aFrame;
 
@@ -141,7 +154,10 @@ namespace avstudio
 		if (n_Frame)
 			m_dAudioTime = n_Frame->pts * m_dAudioQ;
 		else
+		{
 			m_eaStatus = EIOStatus::IO_Done;
+			if (IsAllStreamDone()) PlayEnd();
+		}
 
 		return 0;
 	}
@@ -164,7 +180,7 @@ namespace avstudio
 
 		while (m_evStatus == EIOStatus::IO_Doing)
 		{
-			if (m_dVideoTime != AV_NOPTS_VALUE)
+			if (m_dVideoTime != AVERROR(EAGAIN))
 			{
 				auto delta = m_dVideoTime - m_dAudioTime;
 				if (delta > 0)
@@ -188,15 +204,26 @@ namespace avstudio
 					m_dAudioTime = m_dVideoTime;
 				}
 
-				m_dVideoTime = AV_NOPTS_VALUE;
-				Update(m_dAudioTime);
+				m_dVideoTime = AVERROR(EAGAIN);
 			}
 			else
 			{
 				std::this_thread::sleep_for(std::chrono::milliseconds(kDelay));
-				if (m_dVideoTime == AVERROR(EAGAIN)) Update(m_dAudioTime);
 			}
+
+			Update();
 		}
+	}
+
+	int CIOPlayer::Update()
+	{
+		m_PlayerCb.Execute(EIOPEventId::PEI_UpdateVideo);
+		return 0;
+	}
+
+	void CIOPlayer::PlayEnd()
+	{
+		m_PlayerCb.Execute(EIOPEventId::PEI_EOF);
 	}
 
 }

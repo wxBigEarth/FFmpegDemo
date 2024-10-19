@@ -217,47 +217,15 @@ static void MixAudio()
 }
 
 // Play video
-class CPlayer : public CIOPlayer, public ISdlHandle
-{
-public:
-	// 通过 CIOPlayer 继承
-	int Update(double n_dPlayedTime) override
-	{
-		SDL_Update(n_dPlayedTime, dMaxLength);
-		return 0;
-	}
-
-	AVFrame* SDL_ReadFrame(AVMediaType n_eMediaType) override
-	{
-		AVFrame* Frame = nullptr;
-
-		if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_VIDEO)
-			PopVideo(Frame);
-		else if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_AUDIO)
-			PopAudio(Frame);
-
-		return Frame;
-	}
-
-	void SDL_Stop() override
-	{
-		// close SDL window
-		ForceStop();
-	}
-
-	double dMaxLength = 0;
-};
-
 static void Play()
 {
 	try
 	{
 		CEditor Editor;
-		auto Player = std::make_shared<CPlayer>();
-		FSdl Sdl;
+		auto Player = std::make_shared<CSdlPlayer>();
 
 		// Frames will be sent to Player
-		Editor.SetIoHandle(Player);
+		Editor.SetIoHandle(Player->GetIoHandle());
 
 		// Enable hardware acceleration
 		auto Setting = Editor.GetSetting();
@@ -266,10 +234,6 @@ static void Play()
 		//auto Input = Editor.OpenInputFile("4.mp4", kNO_GROUP, MEDIAMASK_VIDEO);
 		auto Input = Editor.OpenInputFile("4.mp4");
 		auto Output = Editor.AllocOutputFile("");
-
-		Player->dMaxLength = Input->Fmt.Length();
-		// Initialize SDL
-		Sdl.Init(Input->GetMediaMask(), Player);
 
 		if (Input->VideoParts.Stream)
 		{
@@ -281,9 +245,6 @@ static void Play()
 			ovCodec->height = 600;
 			//ovCodec->pix_fmt = GetSupportedPixelFormat(ovCodec->codec,
 			//	AVPixelFormat::AV_PIX_FMT_YUV420P);
-
-			// For NVIDIA hardware acceleration, default pixel format is nv12
-			Sdl.InitVideo("Demo", ovCodec->width, ovCodec->height, SDL_PIXELFORMAT_NV12);
 		}
 
 		if (Input->AudioParts.Stream)
@@ -292,22 +253,16 @@ static void Play()
 			Output->BuildCodecContext(Input->AudioParts.Stream);
 			AVCodecContext* aoCodec = Output->AudioParts.Codec->Context;
 			//aoCodec->sample_fmt = AVSampleFormat::AV_SAMPLE_FMT_S16P;
-
-			Sdl.InitAudio(
-				aoCodec->sample_rate,
-				aoCodec->frame_size,
-				aoCodec->ch_layout.nb_channels,
-				aoCodec->sample_fmt
-			);
 		}
+
+		Player->SetMaxLength(Input->Fmt.Length());
+		// For NVIDIA hardware acceleration, default pixel format is nv12
+		Player->Init(Output, "Video Player", nullptr, SDL_PIXELFORMAT_NV12);
 
 		Editor.Start();
+		Player->Start();
 
-		while (!Editor.IsStop())
-		{
-			Sdl.Event();
-		}
-
+		Player->Join();
 		Editor.Join();
 	}
 	catch (const std::exception& e)

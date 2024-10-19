@@ -14,7 +14,7 @@ namespace avstudio
 		return (AVFrame*)Data;
 	}
 
-	void* AVCloneRef(EDataType n_eDataType, void* n_Data)
+	void* AVCloneRef(EDataType n_eDataType, void* n_Data, void* n_Dest)
 	{
 		void* Data = nullptr;
 
@@ -22,13 +22,29 @@ namespace avstudio
 
 		if (n_eDataType == EDataType::DT_Frame)
 		{
-			AVFrame* Frame = av_frame_alloc();
+			AVFrame* Frame = nullptr;
+
+			if (n_Dest)
+			{
+				Frame = (AVFrame*)n_Dest;
+				av_frame_unref(Frame);
+			}
+			else Frame = av_frame_alloc();
+
 			av_frame_move_ref(Frame, (AVFrame*)n_Data);
 			Data = Frame;
 		}
 		else if (n_eDataType == EDataType::DT_Packet)
 		{
-			AVPacket* Packet = av_packet_alloc();
+			AVPacket* Packet = nullptr;
+
+			if (n_Dest)
+			{
+				Packet = (AVPacket*)n_Dest;
+				av_packet_unref(Packet);
+			}
+			else Packet = av_packet_alloc();
+
 			av_packet_move_ref(Packet, (AVPacket*)n_Data);
 			Data = Packet;
 		}

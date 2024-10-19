@@ -16,33 +16,33 @@ namespace avstudio
 		Release();
 	}
 
-	void FSdl::Init(const unsigned char n_nMediaMask, 
-		std::shared_ptr<ISdlHandle> n_Handle)
+	void FSdl::Init(const unsigned char n_nMediaMask)
 	{
-		ThrowExceptionExpr(!n_Handle, "ISdlHandle could not be null\n");
-
 		uint32_t nFlags = 0;
 
 		if (IsCompriseMedia(n_nMediaMask, AVMediaType::AVMEDIA_TYPE_VIDEO))
 			nFlags |= SDL_INIT_VIDEO;
+		else if (IsCompriseMedia(m_nMediaMask, AVMediaType::AVMEDIA_TYPE_VIDEO))
+			SDL_QuitSubSystem(SDL_INIT_VIDEO);
+
 		if (IsCompriseMedia(n_nMediaMask, AVMediaType::AVMEDIA_TYPE_AUDIO))
 			nFlags |= SDL_INIT_AUDIO;
+		else if (IsCompriseMedia(m_nMediaMask, AVMediaType::AVMEDIA_TYPE_AUDIO))
+			SDL_QuitSubSystem(SDL_INIT_AUDIO);
 
-		int ret = SDL_Init(nFlags);
-		ThrowExceptionExpr(ret, 
-			"Fail to initialize SDL: %s.\n", SDL_GetError());
+		if (nFlags != 0)
+		{
+			int ret = SDL_Init(nFlags);
+			ThrowExceptionExpr(ret,
+				"Fail to initialize SDL: %s.\n", SDL_GetError());
+		}
 
-		m_SdlHandle = n_Handle;
 		m_nMediaMask = n_nMediaMask;
-
-		// Callback function to update video
-		auto pfn = std::bind(&FSdl::Update, this,
-			std::placeholders::_1, std::placeholders::_2);
-		m_SdlHandle->SetUpdateCallback(pfn);
 	}
 
 	void FSdl::InitVideo(const char* n_szTitle,
-		const int n_nWidth, const int n_nHeight,
+		const int n_nWidth, const int n_nHeight, 
+		const void* n_WinId /*= nullptr*/,
 		unsigned int n_nPixFmt /*= SDL_PIXELFORMAT_IYUV*/)
 	{
 		if (m_Window) return;
@@ -50,48 +50,33 @@ namespace avstudio
 		bool b = IsCompriseMedia(m_nMediaMask, AVMediaType::AVMEDIA_TYPE_VIDEO);
 		if (!b) return;
 
-		m_Window = SDL_CreateWindow(n_szTitle,
-			SDL_WINDOWPOS_UNDEFINED,
-			SDL_WINDOWPOS_UNDEFINED,
-			n_nWidth,
-			n_nHeight,
-			SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
+		if (n_WinId)
+			m_Window = SDL_CreateWindowFrom(n_WinId);
+		else
+			m_Window = SDL_CreateWindow(n_szTitle,
+				SDL_WINDOWPOS_UNDEFINED,
+				SDL_WINDOWPOS_UNDEFINED,
+				n_nWidth,
+				n_nHeight,
+				SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
 
 		ThrowExceptionExpr(!m_Window, 
 			"Fail to create window: %s.\n", SDL_GetError());
+
+		SDL_GetWindowSize(m_Window, &m_Rect.w, &m_Rect.h);
 
 		CreateRenderer(m_Window);
 		CreateTexture(n_nPixFmt);
 		
-		m_nDisplayEvent = SDL_RegisterEvents(1);
-		m_Mutex = SDL_CreateMutex();
-	}
-
-	void FSdl::InitVideo(const void* n_WinId,
-		unsigned int n_nPixFmt /*= SDL_PIXELFORMAT_IYUV*/)
-	{
-		if (m_Window) return;
-
-		bool b = IsCompriseMedia(m_nMediaMask, AVMediaType::AVMEDIA_TYPE_VIDEO);
-		if (!b) return;
-
-		m_Window = SDL_CreateWindowFrom(n_WinId);
-
-		ThrowExceptionExpr(!m_Window, 
-			"Fail to create window: %s.\n", SDL_GetError());
-
-		CreateRenderer(m_Window);
-		CreateTexture(n_nPixFmt);
-
-		m_nDisplayEvent = SDL_RegisterEvents(1);
-		m_Mutex = SDL_CreateMutex();
+		if (m_nDisplayEvent == 0) m_nDisplayEvent = SDL_RegisterEvents(1);
+		if (!m_Mutex) m_Mutex = SDL_CreateMutex();
 	}
 
 	void FSdl::InitAudio(
 		int n_nSampleRate,
 		int n_nFrameSize,
 		int n_nNbChannel,
-		AVSampleFormat n_nSampleFormat)
+		AVSampleFormat n_eSampleFormat)
 	{
 		bool b = IsCompriseMedia(m_nMediaMask, AVMediaType::AVMEDIA_TYPE_AUDIO);
 		if (!b) return;
@@ -105,7 +90,7 @@ namespace avstudio
 		AudioSpec.callback = AudioCallback;
 		AudioSpec.userdata = this;
 
-		switch (n_nSampleFormat)
+		switch (n_eSampleFormat)
 		{
 		case AVSampleFormat::AV_SAMPLE_FMT_U8:
 		case AVSampleFormat::AV_SAMPLE_FMT_U8P:
@@ -125,20 +110,36 @@ namespace avstudio
 			break;
 		default:
 			ThrowException("SDL do not support %s\n", 
-				av_get_sample_fmt_name(n_nSampleFormat));
+				av_get_sample_fmt_name(n_eSampleFormat));
 			break;
 		}
 
 		int ret = SDL_OpenAudio(&AudioSpec, nullptr);
 		ThrowExceptionExpr(ret, "Fail to open audio: %s.\n", SDL_GetError());
 
-		m_nPlanar = av_sample_fmt_is_planar(n_nSampleFormat);
-		m_nBytesPerSample = av_get_bytes_per_sample(n_nSampleFormat);;
+		m_nPlanar = av_sample_fmt_is_planar(n_eSampleFormat);
+		m_nBytesPerSample = av_get_bytes_per_sample(n_eSampleFormat);;
 
-		Play();
+		m_bIsAudioUsed = true;
 	}
 
-	const unsigned int FSdl::Event()
+	void FSdl::CloseAudio()
+	{
+		if (m_bIsAudioUsed)
+		{
+			SDL_PauseAudio(1);
+			SDL_CloseAudio();
+		}
+
+		m_bIsAudioUsed = false;
+	}
+
+	void FSdl::SetupCallback(FCallback<FSdlData, AVMediaType> n_cb)
+	{
+		m_cb = n_cb;
+	}
+
+	const int FSdl::Event()
 	{
 		if (!m_Window) return 0;
 
@@ -148,8 +149,8 @@ namespace avstudio
 		{
 			switch (Event.type) {
 			case SDL_QUIT:
-				if (m_SdlHandle) m_SdlHandle->SDL_Stop();
-				Stop();
+				//Stop();
+				return -1;
 				break;
 			case SDL_KEYUP:
 				if (Event.key.keysym.sym == SDLK_SPACE)
@@ -162,14 +163,7 @@ namespace avstudio
 				break;
 			case SDL_WINDOWEVENT:
 				if (Event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED)
-				{
-					SDL_LockMutex(m_Mutex);
-					SDL_DestroyTexture(m_Texture);
-					SDL_DestroyRenderer(m_Renderer);
-					CreateRenderer(m_Window);
-					CreateTexture(m_nPixFmt);
-					SDL_UnlockMutex(m_Mutex);
-				}
+					FlushRendererAndTexture();
 				break;
 			default:
 				if (m_nDisplayEvent == Event.type && m_Window)
@@ -177,64 +171,87 @@ namespace avstudio
 				break;
 			}
 
-			SDL_Delay(10);
+			//SDL_Delay(10);
 		}
 
 		return Event.type;
 	}
 
-	void FSdl::SendDisplayEvent() const
+	void FSdl::SendDisplayEvent()
 	{
+#if 0
 		SDL_Event Event{};
 		Event.type = m_nDisplayEvent;
 		SDL_PushEvent(&Event);
+#else
+		VideoProc();
+#endif
 	}
 
-	void FSdl::Update(double n_dCur, double n_dMax)
+	void FSdl::Update(const int n_nWidth, const int n_nHeight, 
+		const void* n_Data, const int n_nPitch)
 	{
-		VideoProc();
-		ProgressBarProc(n_dCur, n_dMax);
-		SDL_RenderPresent(m_Renderer);
+		if (!n_Data || !m_Texture || !m_Renderer ||
+			m_eStatus != ESdlStatus::SS_Play) return;
+
+		SDL_LockMutex(m_Mutex);
+
+		SDL_Rect rcFrame = { 0, 0, n_nWidth, n_nHeight };
+
+		auto ret = SDL_UpdateTexture(m_Texture, &rcFrame, n_Data, n_nPitch);
+
+		SDL_UnlockMutex(m_Mutex);
+
+		if (ret == 0)
+		{
+			SDL_RenderClear(m_Renderer);
+			SDL_RenderCopy(m_Renderer, m_Texture, &rcFrame, &m_Rect);
+			SDL_RenderPresent(m_Renderer);
+		}
+		else
+			AVDebug("Warning: Fail to render frame on the window,Error: %s\n",
+				SDL_GetError());
 	}
 
 	void FSdl::Play()
 	{
 		m_eStatus = ESdlStatus::SS_Play;
-		SDL_PauseAudio(0);
+		if (m_bIsAudioUsed) SDL_PauseAudio(0);
 	}
 
 	void FSdl::Pause()
 	{
 		m_eStatus = ESdlStatus::SS_Pause;
-		SDL_PauseAudio(0);
+		if (m_bIsAudioUsed) SDL_PauseAudio(1);
 	}
 
-	bool FSdl::IsPause() const
+	const bool FSdl::IsPause() const
 	{
 		return m_eStatus == ESdlStatus::SS_Pause;
 	}
 
-	void FSdl::Stop()
+	void FSdl::Stop(const bool n_bCloseAudio)
 	{
+		if (m_eStatus == ESdlStatus::SS_Stop) return;
+		if (n_bCloseAudio) CloseAudio();
 		m_eStatus = ESdlStatus::SS_Stop;
-		SDL_PauseAudio(0);
+	}
+
+	const bool FSdl::IsStopped() const
+	{
+		return m_eStatus == ESdlStatus::SS_Stop;
 	}
 
 	void FSdl::Release()
 	{
-		m_eStatus = ESdlStatus::SS_Stop;
+		Stop();
 
-		if (m_Texture) SDL_DestroyTexture(m_Texture);
-		if (m_Renderer) SDL_DestroyRenderer(m_Renderer);
-		if (m_Window) SDL_DestroyWindow(m_Window);
-		if (m_Mutex) SDL_DestroyMutex(m_Mutex);
-		SDL_CloseAudio();
+		ReleaseTexture();
+		ReleaseRenderer();
+		ReleaseWindow();
+		ReleaseMutex();
 		SDL_Quit();
 
-		m_Texture = nullptr;
-		m_Renderer = nullptr;
-		m_Window = nullptr;
-		m_Mutex = nullptr;
 		memset(&m_Rect, 0, sizeof(SDL_Rect));
 	}
 
@@ -261,38 +278,99 @@ namespace avstudio
 			m_Rect.h = n_nHeight;
 	}
 
-	void FSdl::CreateTexture(unsigned int n_nPixFmt)
+	void FSdl::FlushRendererAndTexture()
 	{
+		if (!m_Window || !m_Texture || !m_Renderer)
+			return;
+
 		SDL_GetWindowSize(m_Window, &m_Rect.w, &m_Rect.h);
 
+		SDL_LockMutex(m_Mutex);
+		ReleaseTexture();
+		ReleaseRenderer();
+		CreateRenderer(m_Window);
+		CreateTexture(m_nPixFmt);
+		SDL_UnlockMutex(m_Mutex);
+	}
+
+	void FSdl::ReleaseWindow()
+	{
+		if (!m_Window) return;
+		SDL_DestroyWindow(m_Window);
+		m_Window = nullptr;
+	}
+
+	void FSdl::CreateTexture(unsigned int n_nPixFmt)
+	{
+		if (!m_Window) return;
+
+		ReleaseTexture();
+
+		int nWidth = 1920;
+		int nHeight = 1080;
+
+		if (m_Dm.refresh_rate == 0)
+		{
+			auto ret = SDL_GetDesktopDisplayMode(0, &m_Dm);
+			if (ret == 0)
+			{
+				nWidth = m_Dm.w;
+				nHeight = m_Dm.h;
+			}
+		}
+		
 		m_Texture = SDL_CreateTexture(m_Renderer,
 			n_nPixFmt,
 			SDL_TEXTUREACCESS_STREAMING,
-			m_Rect.w,
-			m_Rect.h);
+			nWidth,
+			nHeight);
 		ThrowExceptionExpr(!m_Texture,
 			"Fail to create texture: %s.\n", SDL_GetError());
 
 		m_nPixFmt = n_nPixFmt;
 	}
 
+	void FSdl::ReleaseTexture()
+	{
+		if (!m_Texture) return;
+		SDL_DestroyTexture(m_Texture);
+		m_Texture = nullptr;
+	}
+
 	void FSdl::CreateRenderer(SDL_Window* n_Window)
 	{
 		m_Renderer = SDL_GetRenderer(m_Window);
 		if (!m_Renderer) m_Renderer = SDL_CreateRenderer(n_Window, -1, 0);
+
 		ThrowExceptionExpr(!m_Renderer,
 			"Fail to create renderer: %s.\n", SDL_GetError());
 	}
 
+	void FSdl::ReleaseRenderer()
+	{
+		if (!m_Renderer) return;
+		SDL_DestroyRenderer(m_Renderer);
+		m_Renderer = nullptr;
+	}
+
+	void FSdl::ReleaseMutex()
+	{
+		if (!m_Mutex) return;
+		SDL_DestroyMutex(m_Mutex);
+		m_Mutex = nullptr;
+	}
+
 	void FSdl::VideoProc()
 	{
-		if (!m_SdlHandle || !m_Window) return;
+		if (!m_Window) return;
 
-		auto Frame = m_SdlHandle->SDL_ReadFrame(AVMediaType::AVMEDIA_TYPE_VIDEO);
-		if (!Frame) return;
+		auto Data = m_cb.Execute(AVMediaType::AVMEDIA_TYPE_VIDEO);
+		if (!Data.Frame) return;
 
-		UpdateVideo(Frame);
-		m_SdlHandle->SDL_ReadEnd(Frame);
+		UpdateVideo(Data.Frame);
+
+		ProgressBarProc(Data.dProgress);
+		SDL_RenderPresent(m_Renderer);
 	}
 
 	void FSdl::AudioCallback(void* n_UserData, 
@@ -304,18 +382,15 @@ namespace avstudio
 
 	void FSdl::AudioProc(unsigned char* n_szStream, int n_nLen)
 	{
-		if (!m_SdlHandle) return;
+		auto Data = m_cb.Execute(AVMediaType::AVMEDIA_TYPE_AUDIO);
+		if (!Data.Frame) return;
 
-		auto Frame = m_SdlHandle->SDL_ReadFrame(AVMediaType::AVMEDIA_TYPE_AUDIO);
-		if (!Frame) return;
-
-		UpdateAudio(Frame, n_szStream, n_nLen);
-		m_SdlHandle->SDL_ReadEnd(Frame);
+		UpdateAudio(Data.Frame, n_szStream, n_nLen);
 	}
 
-	void FSdl::ProgressBarProc(double n_dCur, double n_dMax)
+	void FSdl::ProgressBarProc(double n_dProgress)
 	{
-		if (n_dMax == 0) return;
+		if (n_dProgress <= 0) return;
 
 		int nWidth = static_cast<int>(m_Rect.w * 0.9f);
 		int nHeight = 10;
@@ -328,8 +403,7 @@ namespace avstudio
 		SDL_RenderFillRect(m_Renderer, &BgRect);
 
 		// 计算进度条宽度并绘制进度条
-		auto dProgress = n_dCur / n_dMax;
-		auto barWidth = static_cast<int>(dProgress * BgRect.w);
+		auto barWidth = static_cast<int>(n_dProgress * BgRect.w);
 		SDL_Rect BarRect = { BgRect.x, BgRect.y, barWidth, BgRect.h };
 		SDL_SetRenderDrawColor(m_Renderer, 0, 255, 0, 255);
 		SDL_RenderFillRect(m_Renderer, &BarRect);

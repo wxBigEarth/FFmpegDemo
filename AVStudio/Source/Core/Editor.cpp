@@ -2,7 +2,7 @@
 #include "Core/Editor.h"
 #include "Util/Debug.h"
 #include "Util/Common.h"
-#include "IO/IOSyncAV.h"
+#include "IO/IOSync.h"
 
 
 namespace avstudio

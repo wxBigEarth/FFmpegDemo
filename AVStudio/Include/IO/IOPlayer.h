@@ -4,6 +4,7 @@
 #include <list>
 #include <mutex>
 #include "IO/IOHandle.h"
+#include "Util/Callback.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -16,6 +17,14 @@ extern "C" {
 
 namespace avstudio
 {
+	enum class EIOPEventId
+	{
+		// It should update video frame now
+		PEI_UpdateVideo = 0,
+		// End of file, it should stop now
+		PEI_EOF,
+	};
+
 	class CIOPlayer : public IIOHandle
 	{
 	public:
@@ -38,7 +47,15 @@ namespace avstudio
 		void Processing() override;
 
 		// Release memory
+		// Note: IIOHandle::Release() will be called when CEditor done.
+		// But maybe player is still running 
 		void Release() override;
+		void Release2();
+
+		/*
+		* Set callback function
+		*/
+		void SetupCallback(FCallback<void, EIOPEventId> n_cb);
 
 		// Read video frame from list
 		int PopVideo(AVFrame*& n_Frame);
@@ -54,10 +71,11 @@ namespace avstudio
 		void PlayProc();
 
 		// Will be trigger when it should update video
-		virtual int Update(double n_dPlayedTime) = 0;
+		virtual int Update();
+		virtual void PlayEnd();
 
 	protected:
-		std::thread m_tPlay;
+		std::thread			m_tPlay;
 
 		std::list<AVFrame*> m_lstVideo;
 		std::list<AVFrame*> m_lstAudio;
@@ -75,6 +93,9 @@ namespace avstudio
 		double				m_dVideoTime = 0;
 		// The video time base to double
 		double				m_dVideoQ = 0;
+
+		// Callback event
+		FCallback<void, EIOPEventId>	m_PlayerCb;
 	};
 }
 

@@ -36,19 +36,15 @@ Modules:
 Class Description:  
     CEditor: User interface, it will run the tasks in thread. And manage the IO handle and setting module.  
         When open an input file, one CFactory object will be created. Caller can open multiple input file   
-
     CFactory: Do demuxing, decoding, converting, filtering, encoding. The final data is output from the IO handle.  
         There is a input context object, a pointer points to output context, an IO handle pointer in CFactory.  
-
     FWorkShop: Input/output context management, including:  
         create codec context, stream.  
         set Filter.   
         manage video/audio pts.  
         manage clipping of input context  
         and so on.  
-
     FLatheParts: Manage the object pointers that required for file demultiplexing, encoding and decoding, conversion, filtering, and other operations.  
-
     FSetting: Settings about hardware acceleration on codec  
 
 ///////////////////////////////////////////////////////////////////////////////////////////  

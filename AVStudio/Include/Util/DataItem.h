@@ -33,7 +33,8 @@ namespace avstudio
 	};
 
 	// Alloc an AVFrame or AVPacket object, and move ref from n_Data
-	void* AVCloneRef(EDataType n_eDataType, void* n_Data);
+	// If n_Dest is null, it'll alloc one AVFrame/AVPacket
+	void* AVCloneRef(EDataType n_eDataType, void* n_Data, void* n_Dest = nullptr);
 
 	// Free FDataItem and set n_DataItem to nullptr
 	void AVFreeDataPtr(FDataItem** n_DataItem);

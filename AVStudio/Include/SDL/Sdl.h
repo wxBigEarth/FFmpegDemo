@@ -1,7 +1,7 @@
 #ifndef __SDL_H__
 #define __SDL_H__
 #include <memory>
-#include "SDL/SdlHandle.h"
+#include "Util/Callback.h"
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -21,26 +21,31 @@ namespace avstudio
 		SS_Stop,
 	};
 
+	struct FSdlData
+	{
+		AVFrame* Frame = nullptr;
+		double dProgress = 0;
+	};
+
 	struct FSdl
 	{
 		FSdl() = default;
 		~FSdl();
 
-		void Init(const unsigned char n_nMediaMask, 
-			std::shared_ptr<ISdlHandle> n_Handle);
+		void Init(const unsigned char n_nMediaMask);
 
-		// Create video render window
-		// Just support YUV pixel format
+		/*
+		* Create video render window
+		* If n_WinId is not null, use the exists window
+		* Parameter
+		*	n_WinId: MFC window HWND or QT winID
+		*	n_nPixFmt: the pixel format of input video data
+		*/
 		void InitVideo(const char* n_szTitle, 
 			const int n_nWidth, const int n_nHeight,
+			const void* n_WinId = nullptr,
 			unsigned int n_nPixFmt = SDL_PIXELFORMAT_IYUV);
 
-		// Create video render window
-		// n_WinId: MFC window HWND or QT winID
-		void InitVideo(const void* n_WinId, 
-			unsigned int n_nPixFmt = SDL_PIXELFORMAT_IYUV);
-
-		// Init audio parameter
 		/*
 		* Init audio parameter
 		* The supported AVSampleFormat: 
@@ -57,37 +62,56 @@ namespace avstudio
 			int n_nSampleRate,
 			int n_nFrameSize,
 			int n_nNbChannel,
-			AVSampleFormat n_nSampleFormat);
+			AVSampleFormat n_eSampleFormat);
 
-		// SDL event, should call in the same thread as InitVieo
-		const unsigned int Event();
-		// Send event to display video
-		void SendDisplayEvent() const;
+		void CloseAudio();
+
+		// Setup Callback function to fetch AVFrame
+		void SetupCallback(FCallback<FSdlData, AVMediaType> n_cb);
 
 		/*
-		* Update
-		*	double n_dCur: current played time
-		*	double n_dMax: max duration
+		* SDL event, should be called in the same thread as InitVieo
+		* return value:
+		*	-1: Quit
 		*/
-		void Update(double n_dCur, double n_dMax);
+		const int Event();
+
+		// Send event to display video
+		void SendDisplayEvent();
+
+		// Update image with data
+		void Update(const int n_nWidth, const int n_nHeight,
+			const void* n_Data, const int n_nPitch);
 
 		// Play
 		void Play();
 		// Pause
 		void Pause();
 		// Is pause now
-		bool IsPause() const;
+		const bool IsPause() const;
 		// Stop
-		void Stop();
+		// Audio should be close in the thread same as which open audio
+		void Stop(const bool n_bCloseAudio = true);
+		// Is stopped now
+		const bool IsStopped() const;
 
 		void Release();
 
 		// Reset the region that display video image
 		void SetViewRect(int n_nLeft, int n_nTop, int n_nWidth, int n_nHeight);
 
+		// Flush renderer and texture.
+		void FlushRendererAndTexture();
+
 	protected:
+		void ReleaseWindow();
+
 		void CreateTexture(unsigned int n_nPixFmt);
+		void ReleaseTexture();
 		void CreateRenderer(SDL_Window* n_Window);
+		void ReleaseRenderer();
+
+		void ReleaseMutex();
 
 		// Video callback PROC
 		void VideoProc();
@@ -100,7 +124,7 @@ namespace avstudio
 		void AudioProc(unsigned char* n_szStream, int n_nLen);
 
 		// Playing Process 
-		void ProgressBarProc(double n_dCur, double n_dMax);
+		void ProgressBarProc(double n_dProgress);
 
 		// Input frame to render on the window, Default pixel format is YUV
 		// it also support NV12, NV21 pixel format
@@ -116,6 +140,9 @@ namespace avstudio
 		SDL_Texture*	m_Texture = nullptr;
 		SDL_Rect		m_Rect = { 0 };
 		SDL_mutex*		m_Mutex = nullptr;
+		SDL_DisplayMode	m_Dm = { 0 };
+
+		bool			m_bIsAudioUsed = false;
 
 		// Indicate selected streams
 		unsigned char	m_nMediaMask = 0;
@@ -131,7 +158,7 @@ namespace avstudio
 		// Status
 		ESdlStatus		m_eStatus = ESdlStatus::SS_Stop;
 
-		std::shared_ptr<ISdlHandle>	m_SdlHandle = nullptr;
+		FCallback<FSdlData, AVMediaType>	m_cb;
 	};
 }
 
