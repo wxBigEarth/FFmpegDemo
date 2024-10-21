@@ -19,11 +19,47 @@ namespace avstudio
 			const void* n_WinId = nullptr,
 			unsigned int n_nPixFmt = SDL_PIXELFORMAT_IYUV);
 
+		/*
+		* Create video render window
+		* If n_WinId is not null, use the exists window
+		* Parameter
+		*	n_WinId: MFC window HWND or QT winID
+		*	n_nPixFmt: the pixel format of input video data
+		*/
+		void InitVideo(const char* n_szTitle,
+			const int n_nWidth, const int n_nHeight,
+			const void* n_WinId = nullptr,
+			unsigned int n_nPixFmt = SDL_PIXELFORMAT_IYUV);
+
+		/*
+		* Init audio parameter
+		* The supported AVSampleFormat:
+		* 	AVSampleFormat::AV_SAMPLE_FMT_U8
+		*	AVSampleFormat::AV_SAMPLE_FMT_U8P
+		*	AVSampleFormat::AV_SAMPLE_FMT_S16
+		*	AVSampleFormat::AV_SAMPLE_FMT_S16P
+		*	AVSampleFormat::AV_SAMPLE_FMT_S32
+		*	AVSampleFormat::AV_SAMPLE_FMT_S32P
+		*	AVSampleFormat::AV_SAMPLE_FMT_FLT
+		*	AVSampleFormat::AV_SAMPLE_FMT_FLTP
+		*/
+		void InitAudio(
+			int n_nSampleRate,
+			int n_nFrameSize,
+			int n_nNbChannel,
+			AVSampleFormat n_eSampleFormat);
+
 		std::shared_ptr<FSdl> GetSdl();
 		std::shared_ptr<CIOPlayer> GetIoHandle();
 
 		// Set the max length of video/audio file
 		void SetMaxLength(const double n_dLength);
+
+		void Play();
+		void Pause();
+		const bool IsPause() const;
+
+		void Release();
 
 	protected:
 		void Run() override;

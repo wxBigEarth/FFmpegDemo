@@ -54,6 +54,8 @@ namespace avstudio
 
 	void IIOHandle::ForceStop()
 	{
+		if (IsAllStreamDone()) return;
+
 		if (m_fnStop) m_fnStop();
 		m_evStatus = EIOStatus::IO_Done;
 		m_eaStatus = EIOStatus::IO_Done;

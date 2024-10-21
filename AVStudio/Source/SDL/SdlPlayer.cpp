@@ -18,10 +18,14 @@ namespace avstudio
 
 		m_IoPlayer = std::make_shared<CIOPlayer>();
 		m_IoPlayer->SetupCallback(ioCb);
+
+		m_Sdl->Init(MEDIAMASK_AV);
 	}
 
 	CSdlPlayer::~CSdlPlayer()
 	{
+		Release();
+		Join();
 	}
 
 	void CSdlPlayer::Init(std::shared_ptr<FWorkShop> n_Output,
@@ -54,6 +58,27 @@ namespace avstudio
 		}
 	}
 
+	void CSdlPlayer::InitVideo(const char* n_szTitle, 
+		const int n_nWidth, const int n_nHeight, 
+		const void* n_WinId /*= nullptr*/, 
+		unsigned int n_nPixFmt /*= SDL_PIXELFORMAT_IYUV*/)
+	{
+		m_AVInfo.szTitle = n_szTitle;
+		m_AVInfo.WinId = n_WinId;
+		m_AVInfo.nPixFmt = n_nPixFmt;
+		m_AVInfo.nWidth = n_nWidth;
+		m_AVInfo.nHeight = n_nHeight;
+	}
+
+	void CSdlPlayer::InitAudio(int n_nSampleRate, 
+		int n_nFrameSize, int n_nNbChannel, AVSampleFormat n_eSampleFormat)
+	{
+		m_AVInfo.nSampleRate = n_nSampleRate;
+		m_AVInfo.nFrameSize = n_nFrameSize;
+		m_AVInfo.nNbChannel = n_nNbChannel;
+		m_AVInfo.eSampleFormat = n_eSampleFormat;
+	}
+
 	std::shared_ptr<FSdl> CSdlPlayer::GetSdl()
 	{
 		return m_Sdl;
@@ -69,6 +94,28 @@ namespace avstudio
 		m_dMaxLength = n_dLength;
 	}
 
+	void CSdlPlayer::Play()
+	{
+		m_Sdl->Play();
+		m_IoPlayer->SetPause(false);
+	}
+
+	void CSdlPlayer::Pause()
+	{
+		m_Sdl->Pause();
+		m_IoPlayer->SetPause(true);
+	}
+
+	const bool CSdlPlayer::IsPause() const
+	{
+		return m_Sdl->IsPause() && m_IoPlayer->IsPause();
+	}
+
+	void CSdlPlayer::Release()
+	{
+		m_IoPlayer->ForceStop();
+	}
+
 	void CSdlPlayer::Run()
 	{
 		if (m_AVInfo.eSampleFormat != AVSampleFormat::AV_SAMPLE_FMT_NONE)
@@ -77,6 +124,9 @@ namespace avstudio
 				m_AVInfo.nFrameSize,
 				m_AVInfo.nNbChannel,
 				m_AVInfo.eSampleFormat);
+
+			// Start audio 
+			m_Sdl->Play();
 		}
 
 		if (m_AVInfo.nWidth > 0 && m_AVInfo.nHeight > 0)
@@ -88,16 +138,14 @@ namespace avstudio
 				m_AVInfo.nPixFmt);
 		}
 
-		m_Sdl->Play();
-
 		while (!m_Sdl->IsStopped())
 		{
 			if (-1 == m_Sdl->Event())
 			{
 				m_IoPlayer->ForceStop();
-				m_IoPlayer->Release2();
 				break;
 			}
+			m_IoPlayer->SetPause(m_Sdl->IsPause());
 			SDL_Delay(3);
 		}
 

@@ -50,7 +50,10 @@ namespace avstudio
 		// Note: IIOHandle::Release() will be called when CEditor done.
 		// But maybe player is still running 
 		void Release() override;
-		void Release2();
+		void ReleasePlayer();
+
+		// Force stop all stream, set the status to EIOStatus::IO_Done
+		void ForceStop() override;
 
 		/*
 		* Set callback function
@@ -64,6 +67,12 @@ namespace avstudio
 
 		// Get played duration
 		const double PlayedTime() const;
+
+		// Set pause or not
+		void SetPause(bool n_bPause);
+
+		// Is pause or not
+		const bool IsPause() const;
 
 	protected:
 		void Join();
@@ -93,6 +102,8 @@ namespace avstudio
 		double				m_dVideoTime = 0;
 		// The video time base to double
 		double				m_dVideoQ = 0;
+		// Indicate pause status
+		bool				m_bPause = false;
 
 		// Callback event
 		FCallback<void, EIOPEventId>	m_PlayerCb;

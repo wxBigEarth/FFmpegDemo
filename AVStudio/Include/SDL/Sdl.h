@@ -97,11 +97,22 @@ namespace avstudio
 
 		void Release();
 
+		// Flush renderer and texture.
+		void FlushRendererAndTexture();
+
 		// Reset the region that display video image
 		void SetViewRect(int n_nLeft, int n_nTop, int n_nWidth, int n_nHeight);
 
-		// Flush renderer and texture.
-		void FlushRendererAndTexture();
+		// Set rotation in degree
+		void SetRotation(double n_dDegree);
+
+		// Set rotate center
+		// If n_nX < 0, it will be set to middle of horizontal
+		// If n_nY < 0, it will be set to middle of vertical
+		void SetRotateCenter(int n_nX = -1, int n_nY = -1);
+
+		// Set flip 
+		void SetFlipType(SDL_RendererFlip n_eFlip);
 
 	protected:
 		void ReleaseWindow();
@@ -112,6 +123,9 @@ namespace avstudio
 		void ReleaseRenderer();
 
 		void ReleaseMutex();
+
+		// Copy render from texture to renderer
+		void RendererCopy(const SDL_Rect& n_rcTexture);
 
 		// Video callback PROC
 		void VideoProc();
@@ -150,6 +164,13 @@ namespace avstudio
 		unsigned int	m_nDisplayEvent = 0;
 		// Pixel format of SDL
 		unsigned int	m_nPixFmt = SDL_PIXELFORMAT_IYUV;
+
+		// Rotation of the renderer in degree
+		double			m_dRotation = 0;
+		// Rotate center point
+		SDL_Point		m_RotateCenter = { 0, 0 };
+		// Flip type
+		SDL_RendererFlip	m_RendererFlip = SDL_RendererFlip::SDL_FLIP_NONE;
 		
 		// If the input context is planar
 		int				m_nPlanar = 0;

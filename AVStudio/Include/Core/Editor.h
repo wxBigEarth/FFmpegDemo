@@ -63,6 +63,9 @@ namespace avstudio
 		// Set pause or not
 		void SetPause(bool n_bPause);
 
+		// Is pause or not
+		const bool IsPause() const;
+
 	protected:
 		// Before start, do something first
 		int Processing();

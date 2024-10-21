@@ -63,7 +63,9 @@ namespace avstudio
 		ThrowExceptionExpr(!m_Window, 
 			"Fail to create window: %s.\n", SDL_GetError());
 
+		memset(&m_Rect, 0, sizeof(SDL_Rect));
 		SDL_GetWindowSize(m_Window, &m_Rect.w, &m_Rect.h);
+		SetRotateCenter();
 
 		CreateRenderer(m_Window);
 		CreateTexture(n_nPixFmt);
@@ -78,6 +80,8 @@ namespace avstudio
 		int n_nNbChannel,
 		AVSampleFormat n_eSampleFormat)
 	{
+		if (m_bIsAudioUsed) return;
+
 		bool b = IsCompriseMedia(m_nMediaMask, AVMediaType::AVMEDIA_TYPE_AUDIO);
 		if (!b) return;
 
@@ -205,7 +209,7 @@ namespace avstudio
 		if (ret == 0)
 		{
 			SDL_RenderClear(m_Renderer);
-			SDL_RenderCopy(m_Renderer, m_Texture, &rcFrame, &m_Rect);
+			RendererCopy(rcFrame);
 			SDL_RenderPresent(m_Renderer);
 		}
 		else
@@ -245,6 +249,7 @@ namespace avstudio
 	void FSdl::Release()
 	{
 		Stop();
+		CloseAudio();
 
 		ReleaseTexture();
 		ReleaseRenderer();
@@ -253,6 +258,22 @@ namespace avstudio
 		SDL_Quit();
 
 		memset(&m_Rect, 0, sizeof(SDL_Rect));
+	}
+
+	void FSdl::FlushRendererAndTexture()
+	{
+		if (!m_Window || !m_Texture || !m_Renderer)
+			return;
+
+		SDL_GetWindowSize(m_Window, &m_Rect.w, &m_Rect.h);
+		SetRotateCenter();
+
+		SDL_LockMutex(m_Mutex);
+		ReleaseTexture();
+		ReleaseRenderer();
+		CreateRenderer(m_Window);
+		CreateTexture(m_nPixFmt);
+		SDL_UnlockMutex(m_Mutex);
 	}
 
 	void FSdl::SetViewRect(int n_nLeft, int n_nTop, int n_nWidth, int n_nHeight)
@@ -276,21 +297,29 @@ namespace avstudio
 			m_Rect.h = m_Rect.y + n_nHeight - h;
 		else
 			m_Rect.h = n_nHeight;
+
+		SetRotateCenter();
 	}
 
-	void FSdl::FlushRendererAndTexture()
+	void FSdl::SetRotation(double n_dDegree)
 	{
-		if (!m_Window || !m_Texture || !m_Renderer)
-			return;
+		m_dRotation = n_dDegree;
+	}
 
-		SDL_GetWindowSize(m_Window, &m_Rect.w, &m_Rect.h);
+	void FSdl::SetRotateCenter(int n_nX, int n_nY)
+	{
+		m_RotateCenter.x = n_nX;
+		if (m_RotateCenter.x < 0)
+			m_RotateCenter.x = m_Rect.x + m_Rect.w / 2;
 
-		SDL_LockMutex(m_Mutex);
-		ReleaseTexture();
-		ReleaseRenderer();
-		CreateRenderer(m_Window);
-		CreateTexture(m_nPixFmt);
-		SDL_UnlockMutex(m_Mutex);
+		m_RotateCenter.y = n_nY;
+		if (m_RotateCenter.y < 0)
+			m_RotateCenter.y = m_Rect.y + m_Rect.h / 2;
+	}
+
+	void FSdl::SetFlipType(SDL_RendererFlip n_eFlip)
+	{
+		m_RendererFlip = n_eFlip;
 	}
 
 	void FSdl::ReleaseWindow()
@@ -360,9 +389,18 @@ namespace avstudio
 		m_Mutex = nullptr;
 	}
 
+	void FSdl::RendererCopy(const SDL_Rect& n_rcTexture)
+	{
+		if (m_dRotation != 0 || m_RendererFlip != SDL_RendererFlip::SDL_FLIP_NONE)
+			SDL_RenderCopy(m_Renderer, m_Texture, &n_rcTexture, &m_Rect);
+		else
+			SDL_RenderCopyEx(m_Renderer, m_Texture, &n_rcTexture, &m_Rect,
+				m_dRotation, &m_RotateCenter, m_RendererFlip);
+	}
+
 	void FSdl::VideoProc()
 	{
-		if (!m_Window) return;
+		if (!m_Window || m_eStatus != ESdlStatus::SS_Play) return;
 
 		auto Data = m_cb.Execute(AVMediaType::AVMEDIA_TYPE_VIDEO);
 		if (!Data.Frame) return;
@@ -437,7 +475,7 @@ namespace avstudio
 		if (ret == 0)
 		{
 			SDL_RenderClear(m_Renderer);
-			SDL_RenderCopy(m_Renderer, m_Texture, &rcFrame, &m_Rect);
+			RendererCopy(rcFrame);
 			//SDL_RenderPresent(m_Renderer);
 		}
 		else

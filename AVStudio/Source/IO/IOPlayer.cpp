@@ -13,13 +13,21 @@ namespace avstudio
 
 	CIOPlayer::~CIOPlayer()
 	{
-		Release2();
+		ReleasePlayer();
 	}
 
 	int CIOPlayer::WriteData(const AVMediaType n_eMediaType, 
 		EDataType n_eDataType, void* n_Data, const int n_nSize /*= 0*/)
 	{
 		if (n_eDataType != EDataType::DT_Frame)
+			return 0;
+
+		if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_VIDEO &&
+			m_evStatus == IIOHandle::EIOStatus::IO_Done)
+			return 0;
+
+		if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_AUDIO &&
+			m_eaStatus == IIOHandle::EIOStatus::IO_Done)
 			return 0;
 
 		return IIOHandle::WriteData(n_eMediaType, n_eDataType, n_Data, 0);
@@ -52,11 +60,9 @@ namespace avstudio
 
 	void CIOPlayer::Processing()
 	{
-		Release2();
+		ReleasePlayer();
 
 		IIOHandle::Processing();
-
-		Join();
 
 		if (m_evStatus == EIOStatus::IO_Wait)
 			m_tPlay = std::thread(std::bind(&CIOPlayer::PlayProc, this));
@@ -67,7 +73,7 @@ namespace avstudio
 
 	}
 
-	void CIOPlayer::Release2()
+	void CIOPlayer::ReleasePlayer()
 	{
 		IIOHandle::Release();
 
@@ -76,14 +82,14 @@ namespace avstudio
 		auto vitr = m_lstVideo.begin();
 		while (vitr != m_lstVideo.end())
 		{
-			av_frame_free(&(*vitr));
+			if (*vitr) av_frame_free(&(*vitr));
 			m_lstVideo.erase(vitr++);
 		}
 
 		auto aitr = m_lstAudio.begin();
 		while (aitr != m_lstAudio.end())
 		{
-			av_frame_free(&(*aitr));
+			if (*aitr) av_frame_free(&(*aitr));
 			m_lstAudio.erase(aitr++);
 		}
 
@@ -94,6 +100,16 @@ namespace avstudio
 
 		if (m_vFrame) av_frame_free(&m_vFrame);
 		if (m_aFrame) av_frame_free(&m_aFrame);
+	}
+
+	void CIOPlayer::ForceStop()
+	{
+		if (IsAllStreamDone()) return;
+
+		IIOHandle::ForceStop();
+
+		PlayEnd();
+		ReleasePlayer();
 	}
 
 	void CIOPlayer::SetupCallback(FCallback<void, EIOPEventId> n_cb)
@@ -167,6 +183,16 @@ namespace avstudio
 		return m_dAudioTime;
 	}
 
+	void CIOPlayer::SetPause(bool n_bPause)
+	{
+		m_bPause = n_bPause;
+	}
+
+	const bool CIOPlayer::IsPause() const
+	{
+		return m_bPause;
+	}
+
 	void CIOPlayer::Join()
 	{
 		if (m_tPlay.joinable()) m_tPlay.join();
@@ -180,6 +206,12 @@ namespace avstudio
 
 		while (m_evStatus == EIOStatus::IO_Doing)
 		{
+			if (m_bPause)
+			{
+				std::this_thread::sleep_for(std::chrono::milliseconds(kDelay));
+				continue;
+			}
+
 			if (m_dVideoTime != AVERROR(EAGAIN))
 			{
 				auto delta = m_dVideoTime - m_dAudioTime;

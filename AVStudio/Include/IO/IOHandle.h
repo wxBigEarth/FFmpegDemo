@@ -39,7 +39,7 @@ namespace avstudio
 		virtual void Release();
 
 		// Force stop all stream, set the status to EIOStatus::IO_Done
-		void ForceStop();
+		virtual void ForceStop();
 
 		const bool IsAllStreamArrived();
 		const bool IsAllStreamDone() const;

@@ -367,9 +367,10 @@ static void RecordPCM()
 	try
 	{
 		CEditor Editor;
-		InputCtx ctx;
+		std::shared_ptr<InputCtx> ctx = std::make_shared<InputCtx>();
 
-		ctx.Editor = &Editor;
+		ctx->Editor = &Editor;
+		Editor.SetIoHandle(ctx);
 
 		auto Setting = Editor.GetSetting();
 
@@ -398,7 +399,7 @@ static void RecordPCM()
 		// assume that pixel format of source data is AV_PIX_FMT_YUV420P
 		InputVideoCodec->pix_fmt = GetSupportedPixelFormat(InputVideoCodec->codec, AVPixelFormat::AV_PIX_FMT_YUV420P);
 
-		ctx.SetupInputParameter(InputVideoCodec);
+		ctx->SetupInputParameter(InputVideoCodec);
 
 		// Audio Codec Context
 		auto aCodec = FindDecodeCodec(AVCodecID::AV_CODEC_ID_FIRST_AUDIO, Setting);
@@ -411,7 +412,7 @@ static void RecordPCM()
 		InputAudioCodec->sample_fmt = GetSupportedSampleFormat(InputAudioCodec->codec, AVSampleFormat::AV_SAMPLE_FMT_S16);
 		GetSupportedChannelLayout(InputAudioCodec->codec, &InputAudioCodec->ch_layout);
 
-		ctx.SetupInputParameter(InputAudioCodec);
+		ctx->SetupInputParameter(InputAudioCodec);
 
 		Editor.Start();
 
@@ -423,9 +424,9 @@ static void RecordPCM()
 		while (t++ < 100)
 		{
 			// writing data like below
-			ctx.WriteData(AVMediaType::AVMEDIA_TYPE_VIDEO, 
+			ctx->WriteData(AVMediaType::AVMEDIA_TYPE_VIDEO,
 				EDataType::DT_None, "", 1024);
-			ctx.WriteData(AVMediaType::AVMEDIA_TYPE_AUDIO, 
+			ctx->WriteData(AVMediaType::AVMEDIA_TYPE_AUDIO,
 				EDataType::DT_None, "", 1024);
 		}
 

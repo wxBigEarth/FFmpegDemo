@@ -112,6 +112,11 @@ namespace avstudio
 		m_bPause = n_bPause;
 	}
 
+	const bool CEditor::IsPause() const
+	{
+		return m_bPause;
+	}
+
 	int CEditor::Processing()
 	{
 		if (m_vInputCtx.size() == 0) return -1;
