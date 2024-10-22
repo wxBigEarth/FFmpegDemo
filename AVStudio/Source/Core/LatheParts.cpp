@@ -12,6 +12,11 @@ namespace avstudio
 
 		Stream = nullptr;
 
+		Codec.reset();
+		Sws.reset();
+		Resample.reset();
+		FiFo.reset();
+
 		DesireCodecId = AVCodecID::AV_CODEC_ID_NONE;
 	}
 

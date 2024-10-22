@@ -321,12 +321,13 @@ static void RecordAudio()
 }
 
 // Recording PCM date to output file
-class InputCtx : public CIOPcm
+class InputCtx : public CIOPcm,
+	public std::enable_shared_from_this<InputCtx>
 {
 public:
 	// Fill video frame when write PCM data
 	virtual void FillVideoFrame(AVFrame* n_Frame,
-		const void* n_Data, const int& n_nSize) const
+		const void* n_Data, const int n_nSize) const
 	{
 		CIOPcm::FillVideoFrame(n_Frame, n_Data, n_nSize);
 
@@ -349,97 +350,97 @@ public:
 	int ReceiveData(const AVMediaType n_eMediaType,
 		EDataType n_eDataType, void* n_Data) override
 	{
-		int ret = 0;
-
-		if (Editor)
-		{
-			Editor->WriteFrame((AVFrame*)n_Data, n_eMediaType, 0);
-		}
-
-		return ret;
+		return Editor.WriteFrame((AVFrame*)n_Data, n_eMediaType, 0);
 	}
 
-	CEditor* Editor = nullptr;
+	void Start(int n_nWidth, int n_nHeight, int n_nFps)
+	{
+		try
+		{
+			Editor.SetIoHandle(shared_from_this());
+
+			auto Setting = Editor.GetSetting();
+
+			// Create an empty input context
+			auto Input = Editor.OpenInputFile("", kNO_GROUP, MEDIAMASK_AV);
+			auto Output = Editor.AllocOutputFile("output.mp4");
+
+			// Build decode codec for input context
+			// Maybe the Pixel Format/ Sample Format of the source data 
+			// is not the same as output context
+			// So the decode codec is need to build a converter 
+			// The decode codec is built base on source data
+			// The following is example.
+
+			// Video Codec Context
+			auto vCodec = FindDecodeCodec(AVCodecID::AV_CODEC_ID_RAWVIDEO, Setting);
+			Input->VideoParts.Codec = std::make_shared<FCodecContext>();
+
+			AVCodecContext* InputVideoCodec = Input->VideoParts.Codec->Alloc(vCodec);
+			InputVideoCodec->width = n_nWidth;
+			InputVideoCodec->height = n_nHeight;
+			InputVideoCodec->bit_rate = InputVideoCodec->width * InputVideoCodec->height;
+			// assume that frame rate of source data is 30
+			InputVideoCodec->time_base = GetSupportedFrameRate(InputVideoCodec->codec, { 1, n_nFps });
+			InputVideoCodec->framerate = av_inv_q(InputVideoCodec->time_base);
+			// assume that pixel format of source data is AV_PIX_FMT_RGB24
+			InputVideoCodec->pix_fmt = GetSupportedPixelFormat(InputVideoCodec->codec, AVPixelFormat::AV_PIX_FMT_RGB24);
+
+			SetupInputParameter(InputVideoCodec);
+
+			// Audio Codec Context
+			auto aCodec = FindDecodeCodec(AVCodecID::AV_CODEC_ID_FIRST_AUDIO, Setting);
+			Input->AudioParts.Codec = std::make_shared<FCodecContext>();
+
+			AVCodecContext* InputAudioCodec = Input->AudioParts.Codec->Alloc(aCodec);
+			InputAudioCodec->bit_rate = 192000;
+			InputAudioCodec->sample_rate = GetSupportedSampleRate(InputAudioCodec->codec, 41000);
+			InputAudioCodec->time_base = { 1, InputAudioCodec->sample_rate };
+			InputAudioCodec->sample_fmt = GetSupportedSampleFormat(InputAudioCodec->codec, AVSampleFormat::AV_SAMPLE_FMT_S16);
+			GetSupportedChannelLayout(InputAudioCodec->codec, &InputAudioCodec->ch_layout);
+
+			SetupInputParameter(InputAudioCodec);
+
+			Editor.Start();
+		}
+		catch (const std::exception& e)
+		{
+			cout << e.what() << endl;
+		}
+	}
+
+	void Stop()
+	{
+		Editor.Stop();
+		Editor.Join();
+	}
+
+	CEditor Editor;
 };
 
 static void RecordPCM()
 {
-	try
+	InputCtx ctx;
+
+	ctx.Start(800, 600, 30);
+
+	std::cout << "record start" << std::endl;
+
+	// the you can call following function to write frame data
+	// write 100 frames data
+	int t = 0;
+	while (t++ < 100)
 	{
-		CEditor Editor;
-		std::shared_ptr<InputCtx> ctx = std::make_shared<InputCtx>();
-
-		ctx->Editor = &Editor;
-		Editor.SetIoHandle(ctx);
-
-		auto Setting = Editor.GetSetting();
-
-		// Create an empty input context
-		auto Input = Editor.OpenInputFile("");
-		auto Output = Editor.AllocOutputFile("output.mp4");
-
-		// Build decode codec for input context
-		// Maybe the Pixel Format/ Sample Format of the source data 
-		// is not the same as output context
-		// So the decode codec is need to build a converter 
-		// The decode codec is built base on source data
-		// The following is example.
-
-		// Video Codec Context
-		auto vCodec = FindDecodeCodec(AVCodecID::AV_CODEC_ID_RAWVIDEO, Setting);
-		Input->VideoParts.Codec = std::make_shared<FCodecContext>();
-
-		AVCodecContext* InputVideoCodec = Input->VideoParts.Codec->Alloc(vCodec);
-		InputVideoCodec->width = 640;
-		InputVideoCodec->height = 480;
-		InputVideoCodec->bit_rate = 128000;
-		// assume that frame rate of source data is 30
-		InputVideoCodec->time_base = GetSupportedFrameRate(InputVideoCodec->codec, { 1, 30 });
-		InputVideoCodec->framerate = av_inv_q(InputVideoCodec->time_base);
-		// assume that pixel format of source data is AV_PIX_FMT_YUV420P
-		InputVideoCodec->pix_fmt = GetSupportedPixelFormat(InputVideoCodec->codec, AVPixelFormat::AV_PIX_FMT_YUV420P);
-
-		ctx->SetupInputParameter(InputVideoCodec);
-
-		// Audio Codec Context
-		auto aCodec = FindDecodeCodec(AVCodecID::AV_CODEC_ID_FIRST_AUDIO, Setting);
-		Input->AudioParts.Codec = std::make_shared<FCodecContext>();
-
-		AVCodecContext* InputAudioCodec = Input->AudioParts.Codec->Alloc(aCodec);
-		InputAudioCodec->bit_rate = 192000;
-		InputAudioCodec->sample_rate = GetSupportedSampleRate(InputAudioCodec->codec, 41000);
-		InputAudioCodec->time_base = { 1, InputAudioCodec->sample_rate };
-		InputAudioCodec->sample_fmt = GetSupportedSampleFormat(InputAudioCodec->codec, AVSampleFormat::AV_SAMPLE_FMT_S16);
-		GetSupportedChannelLayout(InputAudioCodec->codec, &InputAudioCodec->ch_layout);
-
-		ctx->SetupInputParameter(InputAudioCodec);
-
-		Editor.Start();
-
-		std::cout << "record start" << std::endl;
-
-		// the you can call following function to write frame data
-		// write 100 frames data
-		int t = 0;
-		while (t++ < 100)
-		{
-			// writing data like below
-			ctx->WriteData(AVMediaType::AVMEDIA_TYPE_VIDEO,
-				EDataType::DT_None, "", 1024);
-			ctx->WriteData(AVMediaType::AVMEDIA_TYPE_AUDIO,
-				EDataType::DT_None, "", 1024);
-		}
-
-		Editor.Stop();
-
-		std::cout << "record end" << std::endl;
-
-		Editor.Join();
+		// writing data like below
+		ctx.WriteData(AVMediaType::AVMEDIA_TYPE_VIDEO,
+			EDataType::DT_None, "", 1024);
+		ctx.WriteData(AVMediaType::AVMEDIA_TYPE_AUDIO,
+			EDataType::DT_None, "", 1024);
 	}
-	catch (const std::exception& e)
-	{
-		cout << e.what() << endl;
-	}
+
+	ctx.Stop();
+
+	std::cout << "record end" << std::endl;
 }
 
 #undef main

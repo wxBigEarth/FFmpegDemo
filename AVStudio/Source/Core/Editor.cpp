@@ -146,7 +146,7 @@ namespace avstudio
 
 		for (size_t i = 0; i < m_vInputCtx.size(); i++)
 		{
-			if (m_vInputCtx[i]->Input()->VideoParts.Stream)
+			if (m_vInputCtx[i]->Input()->VideoParts.Codec)
 			{
 				if (!Input) Input = m_vInputCtx[i]->Input();
 				nCount++;
@@ -194,11 +194,7 @@ namespace avstudio
 				m_Output->OpenCodecContext(AVMediaType::AVMEDIA_TYPE_VIDEO);
 			}
 
-			for (size_t i = 0; i < m_vInputCtx.size() && bDecode; i++)
-			{
-				auto Item = m_vInputCtx[i]->Input();
-				Item->SetDecodeFlag(1, AVMEDIA_TYPE_VIDEO);
-			}
+			if (bDecode) SetDecodeFlag(1, AVMediaType::AVMEDIA_TYPE_VIDEO);
 		}
 
 		if (!m_Output->VideoParts.Stream)
@@ -287,11 +283,7 @@ namespace avstudio
 				m_Output->OpenCodecContext(AVMediaType::AVMEDIA_TYPE_AUDIO);
 			}
 
-			for (size_t i = 0; i < m_vInputCtx.size() && bDecode; i++)
-			{
-				auto Item = m_vInputCtx[i]->Input();
-				Item->SetDecodeFlag(1, AVMediaType::AVMEDIA_TYPE_AUDIO);
-			}
+			if (bDecode) SetDecodeFlag(1, AVMediaType::AVMEDIA_TYPE_AUDIO);
 		}
 
 		if (!m_Output->AudioParts.Stream)
@@ -497,7 +489,7 @@ namespace avstudio
 		// no need to create default IO handle
 		if (!m_IoHandle && m_Output->IsValid())
 		{
-			m_IoHandle = std::make_shared<CIOSyncAV>();
+			m_IoHandle = std::make_shared<CIOSync>();
 
 			m_IoHandle->SetupDateCallback(
 				std::bind(&CEditor::WriteIntoFile, this, std::placeholders::_1));
@@ -507,6 +499,15 @@ namespace avstudio
 
 		m_IoHandle->Init(m_Output->GetMediaMask());
 		m_IoHandle->SetupStopCallback([this]() { Stop(); });
+	}
+
+	void CEditor::SetDecodeFlag(int n_nFlag, AVMediaType n_eMediaType)
+	{
+		for (size_t i = 0; i < m_vInputCtx.size(); i++)
+		{
+			auto Item = m_vInputCtx[i]->Input();
+			Item->SetDecodeFlag(n_nFlag, n_eMediaType);
+		}
 	}
 
 	size_t CEditor::GetBufferSize(AVMediaType n_eMediaType)

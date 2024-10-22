@@ -10,16 +10,16 @@ namespace avstudio
 		AVFreeDataPtr(&n_Item);
 	}
 
-	CIOSyncAV::CIOSyncAV()
+	CIOSync::CIOSync()
 	{
 	}
 
-	CIOSyncAV::~CIOSyncAV()
+	CIOSync::~CIOSync()
 	{
 		Release();
 	}
 
-	int CIOSyncAV::ReceiveData(const AVMediaType n_eMediaType,
+	int CIOSync::ReceiveData(const AVMediaType n_eMediaType,
 		EDataType n_eDataType, void* n_Data)
 	{
 		if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_VIDEO)
@@ -44,7 +44,7 @@ namespace avstudio
 		return 0;
 	}
 
-	size_t CIOSyncAV::GetBufferSize(const AVMediaType n_eMediaType)
+	size_t CIOSync::GetBufferSize(const AVMediaType n_eMediaType)
 	{
 		size_t nResult = 0;
 
@@ -56,12 +56,12 @@ namespace avstudio
 		return nResult;
 	}
 
-	void CIOSyncAV::DataProcess()
+	void CIOSync::DataProcess()
 	{
 		if (IsAllStreamArrived()) Synchronize();
 	}
 
-	void CIOSyncAV::Synchronize()
+	void CIOSync::Synchronize()
 	{
 		int vRet = 0;
 		int aRet = 0;
@@ -146,7 +146,7 @@ namespace avstudio
 		}
 	}
 
-	void CIOSyncAV::Release()
+	void CIOSync::Release()
 	{
 		ClearBuffer(AVMediaType::AVMEDIA_TYPE_VIDEO);
 		ClearBuffer(AVMediaType::AVMEDIA_TYPE_AUDIO);
@@ -157,7 +157,7 @@ namespace avstudio
 		IIOHandle::Release();
 	}
 
-	void CIOSyncAV::ClearBuffer(const AVMediaType n_eMediaType)
+	void CIOSync::ClearBuffer(const AVMediaType n_eMediaType)
 	{
 		if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_VIDEO)
 			m_qVideo.Clear(std::bind(&FreeDataItem, std::placeholders::_1));

@@ -79,6 +79,9 @@ namespace avstudio
 		// Initialize default IOHandle
 		void SetupIoHandle();
 
+		// Set if input context should be decoded for each input context
+		void SetDecodeFlag(int n_nFlag, AVMediaType n_eMediaType);
+
 		// Number of data in the buffer
 		size_t GetBufferSize(AVMediaType n_eMediaType);
 

@@ -43,7 +43,11 @@ namespace avstudio
 		if (m_bIsEnd) return AVERROR_EOF;
 		if (!m_Input) return AVERROR_EOF;
 		// For recording, input context is invalid
-		if (!m_Input->IsValid()) return 0;
+		if (!m_Input->IsValid())
+		{
+			std::this_thread::sleep_for(std::chrono::microseconds(10));
+			return 0;
+		}
 		if (!m_Packet) m_Packet = av_packet_alloc();
 
 		int ret = Demuxing(m_Packet);

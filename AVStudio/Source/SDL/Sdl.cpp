@@ -392,10 +392,10 @@ namespace avstudio
 	void FSdl::RendererCopy(const SDL_Rect& n_rcTexture)
 	{
 		if (m_dRotation != 0 || m_RendererFlip != SDL_RendererFlip::SDL_FLIP_NONE)
-			SDL_RenderCopy(m_Renderer, m_Texture, &n_rcTexture, &m_Rect);
-		else
 			SDL_RenderCopyEx(m_Renderer, m_Texture, &n_rcTexture, &m_Rect,
 				m_dRotation, &m_RotateCenter, m_RendererFlip);
+		else
+			SDL_RenderCopy(m_Renderer, m_Texture, &n_rcTexture, &m_Rect);
 	}
 
 	void FSdl::VideoProc()

@@ -13,11 +13,11 @@ extern "C" {
 
 namespace avstudio
 {
-	class CIOSyncAV : public IIOHandle
+	class CIOSync : public IIOHandle
 	{
 	public:
-		CIOSyncAV();
-		virtual ~CIOSyncAV();
+		CIOSync();
+		virtual ~CIOSync();
 
 		// Override this function to do with data
 		int ReceiveData(const AVMediaType n_eMediaType,

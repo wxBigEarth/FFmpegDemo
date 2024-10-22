@@ -17,7 +17,13 @@ namespace avstudio
 		m_nMediaMask = 0;
 		m_Setting = n_Setting;
 
-		if (!Fmt.IsValid()) return;
+		if (!Fmt.IsValid())
+		{
+			// Recording PCM data
+			if (m_eCtxType == ECtxType::CT_Input)
+				m_nMediaMask = n_nMediaMask;
+			return;
+		}
 
 		// Make sure it's input context
 		if (m_eCtxType == ECtxType::CT_Input)
@@ -71,8 +77,8 @@ namespace avstudio
 		AudioParts.Release();
 		m_vFragments.clear();
 
-		m_nMediaMask = -1;
-		m_nGroupId = -1;
+		m_nMediaMask = 0;
+		m_nGroupId = 0;
 		m_nVideoPts = 0;
 		m_nAudioPts = 0;
 
