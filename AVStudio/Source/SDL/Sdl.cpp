@@ -204,8 +204,6 @@ namespace avstudio
 
 		auto ret = SDL_UpdateTexture(m_Texture, &rcFrame, n_Data, n_nPitch);
 
-		SDL_UnlockMutex(m_Mutex);
-
 		if (ret == 0)
 		{
 			SDL_RenderClear(m_Renderer);
@@ -215,6 +213,8 @@ namespace avstudio
 		else
 			AVDebug("Warning: Fail to render frame on the window,Error: %s\n",
 				SDL_GetError());
+
+		SDL_UnlockMutex(m_Mutex);
 	}
 
 	void FSdl::Play()
@@ -440,7 +440,7 @@ namespace avstudio
 		SDL_SetRenderDrawColor(m_Renderer, 255, 255, 255, 255);
 		SDL_RenderFillRect(m_Renderer, &BgRect);
 
-		// ¼ÆËã½ø¶ÈÌõ¿í¶È²¢»æÖÆ½ø¶ÈÌõ
+		// Â¼Ã†Ã‹Ã£Â½Ã¸Â¶ÃˆÃŒÃµÂ¿Ã­Â¶ÃˆÂ²Â¢Â»Ã¦Ã–Ã†Â½Ã¸Â¶ÃˆÃŒÃµ
 		auto barWidth = static_cast<int>(n_dProgress * BgRect.w);
 		SDL_Rect BarRect = { BgRect.x, BgRect.y, barWidth, BgRect.h };
 		SDL_SetRenderDrawColor(m_Renderer, 0, 255, 0, 255);
@@ -470,8 +470,6 @@ namespace avstudio
 				n_Frame->data[1], n_Frame->linesize[1],
 				n_Frame->data[2], n_Frame->linesize[2]);
 
-		SDL_UnlockMutex(m_Mutex);
-
 		if (ret == 0)
 		{
 			SDL_RenderClear(m_Renderer);
@@ -481,6 +479,8 @@ namespace avstudio
 		else
 			AVDebug("Warning: Fail to render frame on the window,Error: %s\n",
 				SDL_GetError());
+
+		SDL_UnlockMutex(m_Mutex);
 	}
 
 	void FSdl::UpdateAudio(AVFrame* n_Frame,
