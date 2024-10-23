@@ -321,8 +321,7 @@ static void RecordAudio()
 }
 
 // Recording PCM date to output file
-class InputCtx : public CIOPcm,
-	public std::enable_shared_from_this<InputCtx>
+class InputCtx : public CIOPcm
 {
 public:
 	// Fill video frame when write PCM data
@@ -357,8 +356,6 @@ public:
 	{
 		try
 		{
-			Editor.SetIoHandle(shared_from_this());
-
 			auto Setting = Editor.GetSetting();
 
 			// Create an empty input context
