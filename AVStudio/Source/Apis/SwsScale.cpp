@@ -35,7 +35,7 @@ namespace avstudio
 		ThrowExceptionExpr(!Context, "Fail to alloc sws context.\n");
 
 		int ret = av_image_alloc(CaleData, LineSize,
-			n_nOutputWidth, n_nOutputHeight, n_eOutputPixelFormat, 1);
+			n_nOutputWidth, n_nOutputHeight, n_eOutputPixelFormat, 32);
 
 		ThrowExceptionCodeExpr(ret < 0, ret, "Fail to allocate destination image");
 
