@@ -66,6 +66,12 @@ namespace avstudio
 		// Is pause or not
 		const bool IsPause() const;
 
+		// Does start working or not
+		const bool IsRunning() const;
+
+		// Start editing and wait until finished processing
+		void StartUntilRunning();
+
 	protected:
 		// Before start, do something first
 		int Processing();
@@ -103,11 +109,12 @@ namespace avstudio
 		std::shared_ptr<FSetting>				m_Setting = nullptr;
 
 		// If [m_IoHandle] is set by AVStudio, it should be free when release
-		bool		m_bFreeHandle = false;
+		bool									m_bFreeHandle = false;
 
-		bool		m_bPause = false;
+		// Editor status
+		unsigned char							m_nStatus = 0;
 
-		size_t		m_nMaxBufferSize = 30;
+		size_t									m_nMaxBufferSize = 30;
 	};
 }
 

@@ -126,7 +126,7 @@ static void Cover()
 		//Input->PickupFragment(5, 6.4);
 		//Input->PickupFragment(16.2, 4.2);
 
-		Editor.Start();
+		Editor.StartUntilRunning();
 		Editor.Join();
 	}
 	catch (const std::exception& e)
@@ -148,7 +148,7 @@ static void HwCover()
 		auto Input = Editor.OpenInputFile("1.avi");
 		auto Output = Editor.AllocOutputFile("1-1.mp4");
 
-		Editor.Start();
+		Editor.StartUntilRunning();
 		Editor.Join();
 	}
 	catch (const std::exception& e)
@@ -168,7 +168,7 @@ static void Merge()
 		auto Input2 = Editor.OpenInputFile("2.mp4");
 		auto Output = Editor.AllocOutputFile("3.mp4");
 
-		Editor.Start();
+		Editor.StartUntilRunning();
 		Editor.Join();
 	}
 	catch (const std::exception& e)
@@ -187,7 +187,7 @@ static void DetachAudioStream()
 		auto Input = Editor.OpenInputFile("1.mp4", kNO_GROUP, MEDIAMASK_AUDIO);
 		auto Output = Editor.AllocOutputFile("1.mp3");
 
-		Editor.Start();
+		Editor.StartUntilRunning();
 		Editor.Join();
 	}
 	catch (const std::exception& e)
@@ -225,7 +225,7 @@ static void MixAudio()
 		Input->SetupFilter(AVMediaType::AVMEDIA_TYPE_AUDIO, Filter);
 		Input2->SetupFilter(AVMediaType::AVMEDIA_TYPE_AUDIO, Filter);
 
-		Editor.Start();
+		Editor.StartUntilRunning();
 		Editor.Join();
 	}
 	catch (const std::exception& e)
@@ -284,7 +284,7 @@ static void Play()
 		//Player->Init(Output, "Video Player", nullptr, SDL_PIXELFORMAT_NV12);
 		Player->Init(Output, "Video Player", nullptr, SDL_PIXELFORMAT_IYUV);
 
-		Editor.Start();
+		Editor.StartUntilRunning();
 		Player->Start();
 
 		Player->Join();
@@ -322,7 +322,7 @@ static void RecordAudio()
 			MEDIAMASK_AV, Device.InputFormat);
 		auto Output = Editor.AllocOutputFile("record.aac");
 
-		Editor.Start();
+		Editor.StartUntilRunning();
 
 		std::thread t([&Editor]() {
 
@@ -423,7 +423,7 @@ public:
 
 			SetupInputParameter(InputAudioCodec);
 
-			Editor.Start();
+			Editor.StartUntilRunning();
 		}
 		catch (const std::exception& e)
 		{
@@ -476,7 +476,7 @@ int main()
 	//Merge();
 	//DetachAudioStream();
 	//MixAudio();
-	//Play();
+	Play();
 	//RecordAudio();
 	//RecordPCM();
 

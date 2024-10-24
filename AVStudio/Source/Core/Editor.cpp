@@ -7,6 +7,10 @@
 
 namespace avstudio
 {
+	constexpr unsigned char kWorking = 1;
+	constexpr unsigned char kPause = 2;
+	constexpr unsigned char kStopped = 4;
+
 	CEditor::CEditor()
 	{
 		m_Output = std::make_shared<FWorkShop>();
@@ -109,12 +113,26 @@ namespace avstudio
 
 	void CEditor::SetPause(bool n_bPause)
 	{
-		m_bPause = n_bPause;
+		if (n_bPause) m_nStatus |= kPause;
+		else m_nStatus &= ~kPause;
 	}
 
 	const bool CEditor::IsPause() const
 	{
-		return m_bPause;
+		return m_nStatus & kPause;
+	}
+
+	const bool CEditor::IsRunning() const
+	{
+		return m_nStatus & kWorking;
+	}
+
+	void CEditor::StartUntilRunning()
+	{
+		Start();
+
+		while (!IsRunning())
+			std::this_thread::sleep_for(std::chrono::microseconds(10));
 	}
 
 	int CEditor::Processing()
@@ -342,6 +360,8 @@ namespace avstudio
 					mGroup[nGroupId].push_back(i);
 				}
 
+				m_nStatus |= kWorking;
+
 				// Run by group
 				size_t nIndex = 0;
 
@@ -368,6 +388,8 @@ namespace avstudio
 		}
 
 		Release();
+
+		m_nStatus = 0;
 	}
 
 	void CEditor::RunByTurn(const std::vector<size_t>& n_vInputs, bool n_bIsLast)
@@ -391,7 +413,7 @@ namespace avstudio
 
 				if ((m_nMaxBufferSize > 0 &&
 					vSize > m_nMaxBufferSize &&
-					aSize > m_nMaxBufferSize) || m_bPause)
+					aSize > m_nMaxBufferSize) || IsPause())
 				{
 					std::this_thread::sleep_for(std::chrono::microseconds(10));
 					continue;
@@ -446,7 +468,7 @@ namespace avstudio
 
 				if ((m_nMaxBufferSize > 0 &&
 					vSize > m_nMaxBufferSize &&
-					aSize > m_nMaxBufferSize) || m_bPause)
+					aSize > m_nMaxBufferSize) || IsPause())
 				{
 					std::this_thread::sleep_for(std::chrono::microseconds(10));
 					continue;
