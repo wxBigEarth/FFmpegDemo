@@ -16,19 +16,13 @@ namespace avstudio
 	{
 	}
 
-	void CAudioMixFilter::InitGraph(unsigned int n_nInputSize)
+	void CAudioMixFilter::BuildInputFilter(unsigned int n_nInputSize)
 	{
-		ThrowExceptionExpr(!m_CodecCtx, "Call Init first\n");
+		ThrowExceptionExpr(!m_FilterGraph.Graph, "Call Init first\n");
 
-		m_FilterGraph.AllocGraph();
-
-		AVFilterContext* mixCtx = m_FilterGraph.BuildContext("amix", "mix");
+		auto mixCtx = m_FilterGraph.BuildContext("amix", "mix");
 		FilterMixOption(mixCtx, n_nInputSize);
-
-		// Output node
-		AVFilterContext* sinkCtx = m_FilterGraph.BuildContext("abuffersink",
-			"sink", nullptr);
-		m_FilterGraph.Link(mixCtx, 0, sinkCtx, 0);
+		m_FilterGraph.Link(mixCtx, 0, m_SinkCtx, 0);
 
 		char szBuffer[10] = { 0 };
 		char szOption[512] = { 0 };
@@ -41,8 +35,7 @@ namespace avstudio
 
 			// Input node
 #if 1
-			AVFilterContext* ctx = m_FilterGraph.BuildContext("abuffer", szBuffer,
-				m_CodecCtx);
+			auto ctx = m_FilterGraph.BuildContext("abuffer", szBuffer, m_CodecCtx);
 #else
 			auto ctx = m_FilterGraph.AllocContext("abuffer", szBuffer);
 
@@ -75,19 +68,24 @@ namespace avstudio
 		//}
 	}
 
+	void CAudioMixFilter::InitGraph()
+	{
+		ThrowExceptionExpr(!m_CodecCtx, "Call Init first\n");
+
+		m_FilterGraph.AllocGraph();
+
+		// Output node
+		m_SinkCtx = m_FilterGraph.BuildContext("abuffersink", "sink", nullptr);
+	}
+
 	unsigned int CAudioMixFilter::FindInputIndex(const unsigned int n_nIndex)
 	{
-		// 0: mix filter context
-		// 1: sink filter context
+		// 0: sink filter context
+		// 1: mix filter context
 		// 2: buffer 0 filter context
 		// 3: buffer 1 filter context
 		// .....
 		return n_nIndex + 2;
-	}
-
-	unsigned int CAudioMixFilter::FindOutputIndex()
-	{
-		return 1;
 	}
 
 	void CAudioMixFilter::FilterMixOption(AVFilterContext* n_FilterContext,

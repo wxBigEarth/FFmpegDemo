@@ -372,17 +372,6 @@ namespace avstudio
 		Context->opaque = (void*)(*Constraints->valid_hw_formats);
 		m_eSwPixelFormat = *(Constraints->valid_sw_formats);
 
-		auto p = Constraints->valid_sw_formats;
-		while (*p != AVPixelFormat::AV_PIX_FMT_NONE)
-		{
-			if (*p == Context->pix_fmt)
-			{
-				m_eSwPixelFormat = *p;
-				break;
-			}
-			p++;
-		}
-
 #if 0
 		auto p = Constraints->valid_hw_formats;
 		while (*p != AVPixelFormat::AV_PIX_FMT_NONE)

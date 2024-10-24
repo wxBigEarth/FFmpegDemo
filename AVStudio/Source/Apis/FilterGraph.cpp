@@ -44,15 +44,15 @@ namespace avstudio
 	}
 
 	AVFilterContext* FFilterGraph::BuildContext(const char* n_szFilterName, 
-		const char* n_szContextName, AVCodecContext* n_CodecContext)
+		const char* n_szContextName, std::shared_ptr<FCodecContext> n_CodecContext)
 	{
 		AVFilterContext* FilterContext = AllocContext(n_szFilterName, n_szContextName);
 
 		if (n_CodecContext)
 		{
-			if (n_CodecContext->codec_type == AVMediaType::AVMEDIA_TYPE_VIDEO)
+			if (n_CodecContext->Context->codec_type == AVMediaType::AVMEDIA_TYPE_VIDEO)
 				FilterVideoOption(FilterContext, n_CodecContext);
-			else if (n_CodecContext->codec_type == AVMediaType::AVMEDIA_TYPE_AUDIO)
+			else if (n_CodecContext->Context->codec_type == AVMediaType::AVMEDIA_TYPE_AUDIO)
 				FilterAudioOption(FilterContext, n_CodecContext);
 		}
 
@@ -169,13 +169,18 @@ namespace avstudio
 			Push(Graph->filters[n_nIndex], n_Frame);
 	}
 
+	int FFilterGraph::Pop(AVFilterContext* n_FilterContext, AVFrame* n_Frame) const
+	{
+		if (!n_FilterContext) return -1;
+		return av_buffersink_get_frame(n_FilterContext, n_Frame);
+	}
+
 	int FFilterGraph::Pop(const unsigned int n_nIndex, AVFrame* n_Frame) const
 	{
 		if (!Graph || n_nIndex >= Graph->nb_filters)
 			return -1;
 
-		int ret = av_buffersink_get_frame(
-			Graph->filters[n_nIndex], n_Frame);
+		int ret = Pop(Graph->filters[n_nIndex], n_Frame);
 
 		return ret;
 	}
@@ -186,33 +191,39 @@ namespace avstudio
 	}
 
 	void FilterVideoOption(AVFilterContext* n_FilterContext, 
-		AVCodecContext* n_CodecContext)
+		std::shared_ptr<FCodecContext> n_CodecContext)
 	{
-		av_opt_set_int(n_FilterContext, "width", n_CodecContext->width,
+		auto Ctx = n_CodecContext->Context;
+
+		av_opt_set_int(n_FilterContext, "width", Ctx->width,
 			AV_OPT_SEARCH_CHILDREN);
-		av_opt_set_int(n_FilterContext, "height", n_CodecContext->height,
+		av_opt_set_int(n_FilterContext, "height", Ctx->height,
 			AV_OPT_SEARCH_CHILDREN);
-		av_opt_set_q(n_FilterContext, "time_base", n_CodecContext->time_base,
+		av_opt_set_q(n_FilterContext, "time_base", Ctx->time_base,
 			AV_OPT_SEARCH_CHILDREN);
 		av_opt_set(n_FilterContext, "pix_fmt", 
-			av_get_pix_fmt_name(n_CodecContext->pix_fmt), AV_OPT_SEARCH_CHILDREN);
+			av_get_pix_fmt_name(n_CodecContext->GetPixelFormat()), AV_OPT_SEARCH_CHILDREN);
+		av_opt_set_q(n_FilterContext, "pixel_aspect", Ctx->sample_aspect_ratio,
+			AV_OPT_SEARCH_CHILDREN);
 	}
 
 	void FilterAudioOption(AVFilterContext* n_FilterContext, 
-		AVCodecContext* n_CodecContext)
+		std::shared_ptr<FCodecContext> n_CodecContext)
 	{
+		auto Ctx = n_CodecContext->Context;
+
 		char szLayout[64] = { 0 };
-		av_channel_layout_describe(&n_CodecContext->ch_layout, szLayout, 
+		av_channel_layout_describe(&Ctx->ch_layout, szLayout,
 			sizeof(szLayout));
 
 		av_opt_set(n_FilterContext, "channel_layout", szLayout,
 			AV_OPT_SEARCH_CHILDREN);
 		av_opt_set(n_FilterContext, "sample_fmt", 
-			av_get_sample_fmt_name(n_CodecContext->sample_fmt),
+			av_get_sample_fmt_name(Ctx->sample_fmt),
 			AV_OPT_SEARCH_CHILDREN);
-		av_opt_set_q(n_FilterContext, "time_base", n_CodecContext->time_base,
+		av_opt_set_q(n_FilterContext, "time_base", Ctx->time_base,
 			AV_OPT_SEARCH_CHILDREN);
-		av_opt_set_int(n_FilterContext, "sample_rate", n_CodecContext->sample_rate, 
+		av_opt_set_int(n_FilterContext, "sample_rate", Ctx->sample_rate,
 			AV_OPT_SEARCH_CHILDREN);
 	}
 

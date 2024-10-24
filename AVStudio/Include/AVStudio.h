@@ -24,6 +24,7 @@
 
 #include "Filter/Filter.h"
 #include "Filter/AudioMixFilter.h"
+#include "Filter/CombineFilter.h"
 
 #include "IO/IOHandle.h"
 #include "IO/IOPcm.h"

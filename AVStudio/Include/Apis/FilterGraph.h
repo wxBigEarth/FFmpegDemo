@@ -1,9 +1,9 @@
 #ifndef __FILTERGRAPH_H__
 #define __FILTERGRAPH_H__
+#include "Apis/CodecContext.h"
 #ifdef __cplusplus
 extern "C" {
 #endif
-#include <libavcodec/avcodec.h>
 #include <libavfilter/avfilter.h>
 #include <libavfilter/buffersink.h>
 #include <libavfilter/buffersrc.h>
@@ -28,7 +28,8 @@ namespace avstudio
 
 		/* Create the filter. */
 		AVFilterContext* BuildContext(const char* n_szFilterName,
-			const char* n_szContextName, AVCodecContext* n_CodecContext = nullptr);
+			const char* n_szContextName, 
+			std::shared_ptr<FCodecContext> n_CodecContext = nullptr);
 
 		/* Now initialize the filter. */
 		void InitContext(AVFilterContext* n_FilterContext, 
@@ -70,6 +71,9 @@ namespace avstudio
 		void Push(const unsigned int n_nIndex, AVFrame* n_Frame);
 
 		/* Get AVFrame from Filter. */
+		int Pop(AVFilterContext* n_FilterContext, AVFrame* n_Frame) const;
+
+		/* Get AVFrame from Filter. */
 		int Pop(const unsigned int n_nIndex, AVFrame* n_Frame) const;
 
 		void Release();
@@ -80,8 +84,8 @@ namespace avstudio
 	};
 
 	void FilterVideoOption(AVFilterContext* n_FilterContext,
-		AVCodecContext* n_CodecContext);
+		std::shared_ptr<FCodecContext> n_CodecContext);
 	void FilterAudioOption(AVFilterContext* n_FilterContext,
-		AVCodecContext* n_CodecContext);
+		std::shared_ptr<FCodecContext> n_CodecContext);
 }
 #endif // __FILTERGRAPH_H__

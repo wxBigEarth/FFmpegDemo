@@ -1,6 +1,8 @@
 #ifndef __FILTER_H__
 #define __FILTER_H__
 #include <functional>
+#include <memory>
+#include "Apis/CodecContext.h"
 #include "Apis/FilterGraph.h"
 #include "Apis/Frame.h"
 
@@ -13,12 +15,15 @@ namespace avstudio
 		IFilter() = default;
 		~IFilter();
 
-		// AVCodecContext* n_CodecContext:
+		// std::shared_ptr<FCodecContext> n_CodecContext:
 		//	Point to Codec Context of output context
-		void Init(AVCodecContext* n_CodecContext);
+		void Init(std::shared_ptr<FCodecContext> n_CodecContext);
 
 		/* Send the frame to the input of the filter graph. */
 		void Push(const unsigned int n_nIndex, AVFrame* n_Frame);
+
+		/* Send the frame to the input of the filter graph. */
+		void Push(AVFrame* n_Frame);
 
 		/* Get AVFrame from Filter. */
 		int Pop(std::function<int(AVFrame*)> func);
@@ -30,16 +35,27 @@ namespace avstudio
 		void Release();
 
 	protected:
+		// Init filter graph
+		virtual void InitGraph();
+
 		// The index of input node in the graph
-		virtual unsigned int FindInputIndex(const unsigned int n_nIndex) = 0;
-		// The index of output node in the graph
-		virtual unsigned int FindOutputIndex() = 0;
+		virtual unsigned int FindInputIndex(const unsigned int n_nIndex);
 
 	protected:
-		FFilterGraph	m_FilterGraph;
+		FFilterGraph		m_FilterGraph;
+
+		// Input node
+		AVFilterContext*	m_BufferCtx = nullptr;
+
+		// Output node
+		AVFilterContext*	m_SinkCtx = nullptr;
+
+		// Current node
+		AVFilterContext*	m_FilterCtx = nullptr;
+
 		// Point to Codec Context of output context
-		AVCodecContext* m_CodecCtx = nullptr;
-		AVFrame*		m_Frame = nullptr;
+		std::shared_ptr<FCodecContext>	m_CodecCtx = nullptr;
+		AVFrame*			m_Frame = nullptr;
 	};
 
 }

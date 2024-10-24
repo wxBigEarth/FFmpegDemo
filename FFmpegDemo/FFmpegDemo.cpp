@@ -27,14 +27,32 @@ static void Cover()
 	{
 		CEditor Editor;
 
-#if 0
+#if 1
 		auto Input = Editor.OpenInputFile("1.mp4");
 		auto Output = Editor.AllocOutputFile("1.avi");
 #else
 		auto Input = Editor.OpenInputFile("1.avi");
 		auto Output = Editor.AllocOutputFile("1-1.mp4");
 #endif
+		Output->SetupMiddleware(
+			[Input, Output](AVCodecContext* Ctx) {
 
+				if (Ctx->codec_type == AVMediaType::AVMEDIA_TYPE_VIDEO)
+				{
+					auto Filter = std::make_shared<CCombineFilter>();
+					Filter->Init(Output->VideoParts.Codec);
+					Filter->AppendFilter("rotate", "a=PI/4", true);
+
+					Input->VideoParts.Filter = Filter;
+				}
+			}
+		);
+
+// 		auto Filter = std::make_shared<CCombineFilter>();
+// 		Filter->Init(Output->VideoParts.Codec);
+// 		Filter->AddFilter("vflip", nullptr, true);
+// 
+// 		Input->VideoParts.Filter = Filter;
 		// CEditor will create codec and stream as need
 		// if they are not exists.
 
@@ -201,8 +219,8 @@ static void MixAudio()
 
 		// Create filter
 		auto Filter = std::make_shared<CAudioMixFilter>();
-		Filter->Init(Output->AudioParts.Codec->Context);
-		Filter->InitGraph(2);
+		Filter->Init(Output->AudioParts.Codec);
+		Filter->BuildInputFilter(2);
 
 		Input->SetupFilter(AVMediaType::AVMEDIA_TYPE_AUDIO, Filter);
 		Input2->SetupFilter(AVMediaType::AVMEDIA_TYPE_AUDIO, Filter);
@@ -234,6 +252,7 @@ static void Play()
 		//auto Input = Editor.OpenInputFile("4.mp4", kNO_GROUP, MEDIAMASK_VIDEO);
 		auto Input = Editor.OpenInputFile("4.mp4");
 		auto Output = Editor.AllocOutputFile("");
+		auto Filter = std::make_shared<CCombineFilter>();
 
 		if (Input->VideoParts.Stream)
 		{
@@ -244,7 +263,12 @@ static void Play()
 			ovCodec->width = 800;
 			ovCodec->height = 600;
 			//ovCodec->pix_fmt = GetSupportedPixelFormat(ovCodec->codec,
-			//	AVPixelFormat::AV_PIX_FMT_YUV420P);
+			//	AVPixelFormat::AV_PIX_FMT_NV12);
+
+			Filter->Init(Output->VideoParts.Codec);
+			Filter->AppendFilter("rotate", "a=PI/4", true);
+
+			Input->VideoParts.Filter = Filter;
 		}
 
 		if (Input->AudioParts.Stream)
@@ -257,7 +281,8 @@ static void Play()
 
 		Player->SetMaxLength(Input->Fmt.Length());
 		// For NVIDIA hardware acceleration, default pixel format is nv12
-		Player->Init(Output, "Video Player", nullptr, SDL_PIXELFORMAT_NV12);
+		//Player->Init(Output, "Video Player", nullptr, SDL_PIXELFORMAT_NV12);
+		Player->Init(Output, "Video Player", nullptr, SDL_PIXELFORMAT_IYUV);
 
 		Editor.Start();
 		Player->Start();
