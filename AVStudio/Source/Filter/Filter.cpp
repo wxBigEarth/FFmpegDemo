@@ -85,6 +85,12 @@ namespace avstudio
 	void IFilter::Release()
 	{
 		m_FilterGraph.Release();
+
+		m_BufferCtx = nullptr;
+		m_SinkCtx = nullptr;
+		m_FilterCtx = nullptr;
+		m_CodecCtx = nullptr;
+		
 		if (m_Frame) av_frame_free(&m_Frame);
 	}
 
