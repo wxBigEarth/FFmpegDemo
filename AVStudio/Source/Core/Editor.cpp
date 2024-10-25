@@ -21,6 +21,8 @@ namespace avstudio
 
 	CEditor::~CEditor()
 	{
+		Stop();
+		Join();
 		Release();
 	}
 
