@@ -16,6 +16,7 @@ namespace avstudio
 		Sws.reset();
 		Resample.reset();
 		FiFo.reset();
+		Filter.reset();
 
 		DesireCodecId = AVCodecID::AV_CODEC_ID_NONE;
 	}
