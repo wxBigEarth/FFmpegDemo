@@ -39,6 +39,7 @@ static void Cover()
 
 				if (Ctx->codec_type == AVMediaType::AVMEDIA_TYPE_VIDEO)
 				{
+					// rotate the video 
 					auto Filter = std::make_shared<CCombineFilter>();
 					Filter->Init(Output->VideoParts.Codec);
 					Filter->AppendFilter("rotate", "a=PI/4", true);
@@ -395,10 +396,10 @@ public:
 			// The following is example.
 
 			// Video Codec Context
-			auto vCodec = FindDecodeCodec(AVCodecID::AV_CODEC_ID_RAWVIDEO, Setting);
-			Input->VideoParts.Codec = std::make_shared<FCodecContext>();
+			Input->VideoParts.Codec = FCodecContext::BuildDecodeCodec(
+				AVCodecID::AV_CODEC_ID_RAWVIDEO, Setting);
 
-			AVCodecContext* InputVideoCodec = Input->VideoParts.Codec->Alloc(vCodec);
+			AVCodecContext* InputVideoCodec = Input->VideoParts.Codec->Context;
 			InputVideoCodec->width = n_nWidth;
 			InputVideoCodec->height = n_nHeight;
 			InputVideoCodec->bit_rate = InputVideoCodec->width * InputVideoCodec->height;
@@ -411,10 +412,10 @@ public:
 			SetupInputParameter(InputVideoCodec);
 
 			// Audio Codec Context
-			auto aCodec = FindDecodeCodec(AVCodecID::AV_CODEC_ID_FIRST_AUDIO, Setting);
-			Input->AudioParts.Codec = std::make_shared<FCodecContext>();
+			Input->AudioParts.Codec = FCodecContext::BuildDecodeCodec(
+				AVCodecID::AV_CODEC_ID_FIRST_AUDIO, Setting);
 
-			AVCodecContext* InputAudioCodec = Input->AudioParts.Codec->Alloc(aCodec);
+			AVCodecContext* InputAudioCodec = Input->AudioParts.Codec->Context;
 			InputAudioCodec->bit_rate = 192000;
 			InputAudioCodec->sample_rate = GetSupportedSampleRate(InputAudioCodec->codec, 41000);
 			InputAudioCodec->time_base = { 1, InputAudioCodec->sample_rate };
@@ -476,7 +477,7 @@ int main()
 	//Merge();
 	//DetachAudioStream();
 	//MixAudio();
-	Play();
+	//Play();
 	//RecordAudio();
 	//RecordPCM();
 

@@ -39,6 +39,18 @@ namespace avstudio
 		FCodecContext() = default;
 		~FCodecContext();
 
+		static std::shared_ptr<FCodecContext> BuildDecodeCodec(
+			AVCodecID n_CodecId,
+			std::shared_ptr<FSetting> n_Setting = nullptr);
+
+		static std::shared_ptr<FCodecContext> BuildEncodeCodec(
+			AVCodecID n_CodecId,
+			std::shared_ptr<FSetting> n_Setting = nullptr);
+
+		static std::shared_ptr<FCodecContext> BuildCodec(
+			const AVCodec* n_Codec,
+			std::shared_ptr<FSetting> n_Setting = nullptr);
+
 		// Alloc codec context memory
 		AVCodecContext* Alloc(const AVCodec* n_Codec,
 			std::shared_ptr<FSetting> n_Setting = nullptr);

@@ -24,6 +24,28 @@ namespace avstudio
 		Release();
 	}
 
+	std::shared_ptr<FCodecContext> FCodecContext::BuildDecodeCodec(
+		AVCodecID n_CodecId, std::shared_ptr<FSetting> n_Setting /*= nullptr*/)
+	{
+		auto Codec = FindDecodeCodec(n_CodecId, n_Setting);
+		return BuildCodec(Codec, n_Setting);
+	}
+
+	std::shared_ptr<FCodecContext> FCodecContext::BuildEncodeCodec(
+		AVCodecID n_CodecId, std::shared_ptr<FSetting> n_Setting /*= nullptr*/)
+	{
+		auto Codec = FindEncodeCodec(n_CodecId, n_Setting);
+		return BuildCodec(Codec, n_Setting);
+	}
+
+	std::shared_ptr<FCodecContext> FCodecContext::BuildCodec(
+		const AVCodec* n_Codec, std::shared_ptr<FSetting> n_Setting /*= nullptr*/)
+	{
+		auto CodecContext = std::make_shared<FCodecContext>();
+		CodecContext->Alloc(n_Codec, n_Setting);
+		return CodecContext;
+	}
+
 	AVCodecContext* FCodecContext::Alloc(const AVCodec* n_Codec,
 		std::shared_ptr<FSetting> n_Setting)
 	{

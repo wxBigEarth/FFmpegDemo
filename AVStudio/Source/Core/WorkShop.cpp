@@ -30,17 +30,14 @@ namespace avstudio
 		{
 			if (IsCompriseMedia(n_nMediaMask, AVMediaType::AVMEDIA_TYPE_VIDEO))
 			{
-				const AVCodec* VideoCodec = nullptr;
 				VideoParts.nStreamIndex = Fmt.FindStreamIndex(
-					AVMediaType::AVMEDIA_TYPE_VIDEO, &VideoCodec);
+					AVMediaType::AVMEDIA_TYPE_VIDEO, nullptr);
 				if (VideoParts.nStreamIndex >= 0)
 				{
 					VideoParts.Stream = Fmt.FindStream(VideoParts.nStreamIndex);
-					VideoParts.Codec = std::make_shared<FCodecContext>();
 					// Maybe it has config hardware acceleration
-					VideoCodec = FindDecodeCodec(VideoCodec->id, m_Setting);
-
-					VideoParts.Codec->Alloc(VideoCodec, m_Setting);
+					VideoParts.Codec = FCodecContext::BuildDecodeCodec(
+						VideoParts.Stream->codecpar->codec_id, m_Setting);
 					VideoParts.Codec->CopyCodecParameter(VideoParts.Stream);
 					VideoParts.Codec->ConfigureHwAccel();
 
@@ -56,9 +53,7 @@ namespace avstudio
 				if (AudioParts.nStreamIndex >= 0)
 				{
 					AudioParts.Stream = Fmt.FindStream(AudioParts.nStreamIndex);
-					AudioParts.Codec = std::make_shared<FCodecContext>();
-
-					AudioParts.Codec->Alloc(AudioCodec, m_Setting);
+					AudioParts.Codec = FCodecContext::BuildCodec(AudioCodec, m_Setting);
 					AudioParts.Codec->CopyCodecParameter(AudioParts.Stream);
 
 					CombineMedia(m_nMediaMask, AVMediaType::AVMEDIA_TYPE_AUDIO);
@@ -248,8 +243,8 @@ namespace avstudio
 			Result = VideoParts.Codec;
 			if (!Result)
 			{
-				VideoParts.Codec = std::make_shared<FCodecContext>();
-				auto ctx = VideoParts.Codec->Alloc(Codec, m_Setting);
+				VideoParts.Codec = FCodecContext::BuildCodec(Codec, m_Setting);
+				auto ctx = VideoParts.Codec->Context;
 				VideoParts.Codec->CopyCodecParameter(n_Stream);
 
 				ctx->framerate = n_Stream->r_frame_rate;
@@ -278,8 +273,7 @@ namespace avstudio
 			Result = AudioParts.Codec;
 			if (!Result)
 			{
-				AudioParts.Codec = std::make_shared<FCodecContext>();
-				AudioParts.Codec->Alloc(Codec, m_Setting);
+				AudioParts.Codec = FCodecContext::BuildCodec(Codec, m_Setting);
 				AudioParts.Codec->CopyCodecParameter(n_Stream);
 
 				Result = AudioParts.Codec;
@@ -309,8 +303,8 @@ namespace avstudio
 			Result = AudioParts.Codec;
 			if (!Result)
 			{
-				AudioParts.Codec = std::make_shared<FCodecContext>();
-				auto ctx = AudioParts.Codec->Alloc(Codec, m_Setting);
+				AudioParts.Codec = FCodecContext::BuildCodec(Codec, m_Setting);
+				auto ctx = AudioParts.Codec->Context;
 				Result = AudioParts.Codec;
 
 				if (n_InputCodecContext)
@@ -337,8 +331,8 @@ namespace avstudio
 			Result = VideoParts.Codec;
 			if (!Result)
 			{
-				VideoParts.Codec = std::make_shared<FCodecContext>();
-				auto ctx = VideoParts.Codec->Alloc(Codec, m_Setting);
+				VideoParts.Codec = FCodecContext::BuildCodec(Codec, m_Setting);
+				auto ctx = VideoParts.Codec->Context;
 				Result = VideoParts.Codec;
 
 				if (n_InputCodecContext)
