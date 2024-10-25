@@ -10,9 +10,12 @@ extern "C" {
 
 namespace avstudio
 {
-	void CIOPcm::SetupInputParameter(AVCodecContext* n_Codecctx)
+	void CIOPcm::SetupInputParameter(AVCodecContext* n_CodecCtx)
 	{
-		m_vCodecCtx = n_Codecctx;
+		if (n_CodecCtx->codec_type == AVMediaType::AVMEDIA_TYPE_VIDEO)
+			m_vCodecCtx = n_CodecCtx;
+		else if (n_CodecCtx->codec_type == AVMediaType::AVMEDIA_TYPE_AUDIO)
+			m_aCodecCtx = n_CodecCtx;
 	}
 
 	int CIOPcm::WriteData(const AVMediaType n_eMediaType,
