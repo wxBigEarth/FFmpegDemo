@@ -124,9 +124,6 @@ namespace avstudio
 				m_AVInfo.nFrameSize,
 				m_AVInfo.nNbChannel,
 				m_AVInfo.eSampleFormat);
-
-			// Start audio 
-			m_Sdl->Play();
 		}
 
 		if (m_AVInfo.nWidth > 0 && m_AVInfo.nHeight > 0)
@@ -137,6 +134,8 @@ namespace avstudio
 				m_AVInfo.WinId, 
 				m_AVInfo.nPixFmt);
 		}
+		
+		m_Sdl->Play();
 
 		while (!m_Sdl->IsStopped())
 		{
