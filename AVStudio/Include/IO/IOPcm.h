@@ -18,6 +18,8 @@ namespace avstudio
 	class CIOPcm : public IIOHandle
 	{
 	public:
+		virtual ~CIOPcm();
+
 		void SetupInputParameter(AVCodecContext* n_Codecctx);
 
 		int WriteData(const AVMediaType n_eMediaType,
