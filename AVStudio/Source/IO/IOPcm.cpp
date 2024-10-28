@@ -10,6 +10,11 @@ extern "C" {
 
 namespace avstudio
 {
+	CIOPcm::~CIOPcm()
+	{
+		Release();
+	}
+
 	void CIOPcm::SetupInputParameter(AVCodecContext* n_CodecCtx)
 	{
 		if (n_CodecCtx->codec_type == AVMediaType::AVMEDIA_TYPE_VIDEO)
