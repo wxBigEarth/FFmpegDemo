@@ -628,7 +628,9 @@ namespace avstudio
 
 	void FWorkShop::PickupFragment(const double n_dStart, const double n_dLength)
 	{
-		if (m_eCtxType != ECtxType::CT_Input) return;
+		if (m_eCtxType != ECtxType::CT_Input || 
+			n_dStart < 0 ||
+			n_dLength <= 0) return;
 
 		FFragment Section;
 		double dTo = n_dStart + n_dLength;
