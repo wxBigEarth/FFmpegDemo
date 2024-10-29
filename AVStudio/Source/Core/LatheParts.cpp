@@ -12,6 +12,8 @@ namespace avstudio
 
 		Stream = nullptr;
 
+		// If reference count lager than 0, it will not call Release()
+		if (Codec) Codec->Release();
 		Codec.reset();
 		Sws.reset();
 		Resample.reset();
