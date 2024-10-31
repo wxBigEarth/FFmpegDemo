@@ -27,6 +27,11 @@ namespace avstudio
 	{
 		Release();
 
+		if (n_nInputWidth == n_nOutputWidth &&
+			n_nInputHeight == n_nOutputHeight &&
+			n_eInputPixelFormat == n_eOutputPixelFormat)
+			return Context;
+
 		Context = sws_getContext(
 			n_nInputWidth, n_nInputHeight, n_eInputPixelFormat,
 			n_nOutputWidth, n_nOutputHeight, n_eOutputPixelFormat,
