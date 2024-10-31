@@ -120,6 +120,8 @@ namespace avstudio
 	{
 		if (m_Input->IsValid())
 		{
+			if (!m_Packet) m_Packet = av_packet_alloc();
+
 			m_Packet->data = nullptr;
 			m_Packet->size = 0;
 
@@ -226,6 +228,7 @@ namespace avstudio
 					}
 
 					n_Frame->time_base = iLatheParts->Codec->Context->time_base;
+					n_Frame->duration = iLatheParts->Duration;
 				}
 
 				return Converting(n_Frame, n_eMediaType);
@@ -254,24 +257,32 @@ namespace avstudio
 					LatheParts->Sws->GetOutputPixelFormat(),
 					m_vFrame);
 
-				LatheParts->Sws->Scale(
-					(const uint8_t**)n_Frame->data, n_Frame->linesize,
+				LatheParts->Sws->Scale(n_Frame->data, n_Frame->linesize,
 					m_vFrame->data, m_vFrame->linesize);
 
 				m_vFrame->pts = n_Frame->pts;
+				m_vFrame->duration = n_Frame->duration;
+				m_vFrame->time_base = n_Frame->time_base;
 				Frame = m_vFrame;
 				//LogInfo("Video frame: %zd.\n", Frame->pts);
 			}
 			
 			if (Frame)
 			{
-				if (m_Output->VideoParts.Duration == 0)
-					Frame->duration = n_Frame->duration;
-				else
-					Frame->duration = m_Output->VideoParts.Duration;
+				Frame->pts = m_Input->AdjustPts(Frame->duration, n_eMediaType);
 
-				Frame->pts = m_Input->AdjustPts(Frame->duration, n_eMediaType) +
-					m_Output->GetLastPts(n_eMediaType);
+				if (m_Output->VideoParts.Codec && m_Output->VideoParts.Codec->Context)
+				{
+					Frame->time_base = m_Output->VideoParts.Codec->Context->time_base;
+					auto from = LatheParts->Codec->Context->time_base;
+					auto to = Frame->time_base;
+
+					int cmp = av_cmp_q(from, to);
+					if (cmp != 0 && cmp != INT_MIN)
+						Frame->pts = av_rescale_q(Frame->pts, from, to);
+				}
+
+				Frame->pts += m_Output->GetLastPts(n_eMediaType);
 			}
 
 			ret = Filtering(Frame, n_eMediaType);
@@ -384,9 +395,6 @@ namespace avstudio
 
 		if (!oLatheParts || !iLatheParts) return ret;
 
-		if (n_Frame && iLatheParts->Codec)
-			n_Frame->time_base = iLatheParts->Codec->Context->time_base;
-
 		if (!oLatheParts->Codec->IsOpen() ||
 			!oLatheParts->Stream || 
 			(!n_Frame && (!m_bIsLastItem || !m_bIsLastGroup)) ||
@@ -404,7 +412,7 @@ namespace avstudio
 		}
 
 		ret = oLatheParts->Codec->EncodeFrame(n_Frame,
-			[this, n_eMediaType, oLatheParts, iLatheParts](AVPacket* n_Packet) {
+			[this, n_eMediaType, oLatheParts](AVPacket* n_Packet) {
 
 				if (n_Packet)
 				{
@@ -484,9 +492,7 @@ namespace avstudio
 		m_aFrame->pts = m_Input->AdjustPts(m_aFrame->nb_samples,
 			AVMediaType::AVMEDIA_TYPE_AUDIO) +
 			m_Output->GetLastPts(AVMediaType::AVMEDIA_TYPE_AUDIO);
-
-		if (m_Output->AudioParts.Duration != 0)
-			m_aFrame->duration = m_Output->AudioParts.Duration;
+		m_aFrame->time_base = ctx->time_base;
 
 		//LogInfo("Audio frame: %zd.\n", Frame->pts);
 

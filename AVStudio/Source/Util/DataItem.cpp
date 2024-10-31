@@ -87,12 +87,12 @@ namespace avstudio
 
 	void AVFreeData(AVFrame** n_Frame)
 	{
-		if (n_Frame) av_frame_free(n_Frame);
+		if (n_Frame && *n_Frame) av_frame_free(n_Frame);
 	}
 
 	void AVFreeData(AVPacket** n_Packet)
 	{
-		if (n_Packet) av_packet_free(n_Packet);
+		if (n_Packet && *n_Packet) av_packet_free(n_Packet);
 	}
 
 }
