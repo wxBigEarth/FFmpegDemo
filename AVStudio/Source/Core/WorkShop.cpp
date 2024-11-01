@@ -499,6 +499,7 @@ namespace avstudio
 					n_Output->VideoParts.Codec->Context->width,
 					n_Output->VideoParts.Codec->Context->height,
 					n_Output->VideoParts.Codec->GetPixelFormat());
+				if (!VideoParts.Sws) VideoParts.Sws.reset();
 			}
 		}
 
