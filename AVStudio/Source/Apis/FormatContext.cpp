@@ -133,6 +133,11 @@ namespace avstudio
 		return ret;
 	}
 
+	int FFormatContext::SeekFrame(int n_nStreamIndex, int64_t n_nPts, int n_nFlags)
+	{
+		return av_seek_frame(Context, n_nStreamIndex, n_nPts, n_nFlags);
+	}
+
 	void FFormatContext::OpenOutputFile()
 	{
 		if (!IsValid()) return;
@@ -156,7 +161,7 @@ namespace avstudio
 	int FFormatContext::InterleavedWritePacket(AVPacket* n_Packet)
 	{
 #if _DEBUG
-		RescalePacket(n_Packet);
+		//RescalePacket(n_Packet);
 #endif
 
 		int ret = av_interleaved_write_frame(Context, n_Packet);

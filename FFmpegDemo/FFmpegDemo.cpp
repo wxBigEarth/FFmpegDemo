@@ -34,20 +34,20 @@ static void Cover()
 		auto Input = Editor.OpenInputFile("1.avi");
 		auto Output = Editor.AllocOutputFile("1-1.mp4");
 #endif
-		Output->SetupMiddleware(
-			[Input, Output](AVCodecContext* Ctx) {
-
-				if (Ctx->codec_type == AVMediaType::AVMEDIA_TYPE_VIDEO)
-				{
-					// rotate the video 
-					auto Filter = std::make_shared<CCombineFilter>();
-					Filter->Init(Output->VideoParts.Codec);
-					Filter->AppendFilter("rotate", "a=PI/4", true);
-
-					Input->VideoParts.Filter = Filter;
-				}
-			}
-		);
+// 		Output->SetupMiddleware(
+// 			[Input, Output](AVCodecContext* Ctx) {
+// 
+// 				if (Ctx->codec_type == AVMediaType::AVMEDIA_TYPE_VIDEO)
+// 				{
+// 					// rotate the video 
+// 					auto Filter = std::make_shared<CCombineFilter>();
+// 					Filter->Init(Output->VideoParts.Codec);
+// 					Filter->AppendFilter("rotate", "a=PI/4", true);
+// 
+// 					Input->VideoParts.Filter = Filter;
+// 				}
+// 			}
+// 		);
 
 // 		auto Filter = std::make_shared<CCombineFilter>();
 // 		Filter->Init(Output->VideoParts.Codec);
@@ -124,8 +124,8 @@ static void Cover()
 		
 		// Split the input context into fragments
 		// It can be used to split input file
-		//Input->PickupFragment(5, 6.4);
-		//Input->PickupFragment(16.2, 4.2);
+		Input->PickupFragment(5, 6.4);
+		Input->PickupFragment(16.2, 4.2);
 
 		Editor.StartUntilRunning();
 		Editor.Join();

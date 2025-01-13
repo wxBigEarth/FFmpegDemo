@@ -59,16 +59,33 @@ namespace avstudio
 
 		auto eMediaType = m_Input->Fmt.GetStreamMediaType(m_Packet->stream_index);
 		auto nOffset = m_Input->TryPickup(m_Packet->pts, eMediaType);
+		if (nOffset == AVERROR_EOF)
+		{
+			Flush();
+			return AVERROR_EOF;
+		}
+
+		//if (m_Packet->stream_index == m_Input->VideoParts.nStreamIndex)
+		//{
+		//	auto t = m_Packet->pts * av_q2d(m_Input->VideoParts.Stream->time_base);
+		//	AVDebug("Video : %lf\n", t);
+		//}
+		//else if (m_Packet->stream_index == m_Input->AudioParts.nStreamIndex)
+		//{
+		//	auto t = m_Packet->pts * av_q2d(m_Input->AudioParts.Stream->time_base);
+		//	AVDebug("Audio : %lf\n", t);
+		//}
 
 		if (m_Input->CheckMedia(eMediaType) && nOffset >= 0)
 		{
-			m_Packet->pts -= nOffset;
-			m_Packet->dts -= nOffset;
+			m_Packet->dts = nOffset + m_Packet->dts - m_Packet->pts;
+			m_Packet->pts = nOffset;
 
 			// For video stream, default index is 0
 			// For Audio stream, default index is 1
 			if (m_Packet->stream_index == m_Input->VideoParts.nStreamIndex)
 			{
+				m_Input->VideoParts.PacketPts += m_Packet->duration;
 				m_Packet->stream_index = 0;
 				m_Packet->time_base = m_Input->VideoParts.Stream->time_base;
 
@@ -86,6 +103,7 @@ namespace avstudio
 			}
 			else if (m_Packet->stream_index == m_Input->AudioParts.nStreamIndex)
 			{
+				m_Input->AudioParts.PacketPts += m_Packet->duration;
 				// If no video stream, audio stream index is 0
 				m_Packet->stream_index = m_Input->VideoParts.nStreamIndex < 0 ? 0 : 1;
 				m_Packet->time_base = m_Input->AudioParts.Stream->time_base;

@@ -54,6 +54,9 @@ namespace avstudio
 		// Read packet from input file
 		int ReadPacket(AVPacket* n_Packet) const;
 
+		// Seek to the specified position in the input file
+		int SeekFrame(int n_nStreamIndex, int64_t n_nPts, int n_nFlags);
+
 		// open the output file
 		void OpenOutputFile();
 

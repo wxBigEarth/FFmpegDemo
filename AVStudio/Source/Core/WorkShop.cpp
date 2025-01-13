@@ -102,6 +102,13 @@ namespace avstudio
 					!VideoParts.Codec ||
 					!VideoParts.Codec->Context,
 					"Video stream: not initialize complete\n");
+
+				if (m_vFragments.size() > 0)
+				{
+					Fmt.SeekFrame(VideoParts.nFragmentIndex,
+						m_vFragments[VideoParts.nFragmentIndex].vFrom,
+						AVSEEK_FLAG_FRAME | AVSEEK_FLAG_BACKWARD);
+				}
 			}
 		}
 		
@@ -125,6 +132,13 @@ namespace avstudio
 					!AudioParts.Codec ||
 					!AudioParts.Codec->Context,
 					"Audio stream: not initialize complete\n");
+
+				if (m_vFragments.size() > 0)
+				{
+					Fmt.SeekFrame(AudioParts.nStreamIndex,
+						m_vFragments[AudioParts.nFragmentIndex].aFrom,
+						AVSEEK_FLAG_FRAME | AVSEEK_FLAG_BYTE);
+				}
 			}
 		}
 	}
@@ -653,55 +667,52 @@ namespace avstudio
 	int64_t FWorkShop::TryPickup(int64_t n_nPts, AVMediaType n_eMediaType)
 	{
 		int64_t nResult = 0;
-		if (m_vFragments.size() > 0) nResult = -1;
+		int nSize = (int)m_vFragments.size();
+		if (nSize == 0) return nResult;
 
-		int64_t n = 0;
+		nResult = -1;
 
-		for (size_t i = 0; i < m_vFragments.size(); i++)
+		do 
 		{
-			if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_VIDEO)
+			if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_VIDEO && VideoParts.Stream)
 			{
-				if (i == 0)
-					n = m_vFragments[i].vFrom;
-				else
-					n += m_vFragments[i].vFrom - m_vFragments[i - 1].vFrom;
-
-				if (m_vFragments[i].vFrom <= n_nPts && 
-					m_vFragments[i].vTo > n_nPts)
+				if (VideoParts.nFragmentIndex >= nSize) break;
+				
+				if (n_nPts >= m_vFragments[VideoParts.nFragmentIndex].vTo)
 				{
-					nResult = n;
-					break;
-				}
+					VideoParts.nFragmentIndex++;
+					AudioParts.nFragmentIndex++;
+					if (VideoParts.nFragmentIndex >= nSize) break;
 
-				if (m_vFragments[i].vTo < n_nPts &&
-					i == m_vFragments.size() - 1)
-				{
-					nResult = AVERROR_EOF;
-					break;
+					Fmt.SeekFrame(VideoParts.nStreamIndex,
+						m_vFragments[VideoParts.nFragmentIndex].vFrom,
+						AVSEEK_FLAG_BACKWARD | AVSEEK_FLAG_FRAME);
 				}
+				else nResult = VideoParts.PacketPts;
 			}
-			else if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_AUDIO)
+			else if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_AUDIO && AudioParts.Stream)
 			{
-				if (i == 0)
-					n = m_vFragments[i].aFrom;
-				else
-					n += m_vFragments[i].aFrom - m_vFragments[i - 1].aFrom;
+				if (AudioParts.nFragmentIndex >= nSize) break;
 
-				if (m_vFragments[i].aFrom <= n_nPts && 
-					m_vFragments[i].aTo > n_nPts)
+				if (n_nPts >= m_vFragments[AudioParts.nFragmentIndex].aTo)
 				{
-					nResult = n;
-					break;
-				}
+					VideoParts.nFragmentIndex++;
+					AudioParts.nFragmentIndex++;
+					if (AudioParts.nFragmentIndex >= nSize) break;
 
-				if (m_vFragments[i].aTo < n_nPts &&
-					i == m_vFragments.size() - 1)
-				{
-					nResult = AVERROR_EOF;
-					break;
+					Fmt.SeekFrame(AudioParts.nStreamIndex,
+						m_vFragments[AudioParts.nFragmentIndex].aFrom,
+						AVSEEK_FLAG_BYTE | AVSEEK_FLAG_FRAME);
 				}
+				else nResult = AudioParts.PacketPts;
 			}
-		}
+
+		} while (false);
+
+
+		if ((!VideoParts.Stream || VideoParts.nFragmentIndex >= nSize)
+			&& (!AudioParts.Stream || AudioParts.nFragmentIndex >= nSize))
+			nResult = AVERROR_EOF;
 
 		return nResult;
 	}

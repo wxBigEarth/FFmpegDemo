@@ -112,8 +112,7 @@ namespace avstudio
 		// Get the PTS of last input context
 		int64_t GetLastPts(AVMediaType n_eMediaType) const;
 
-		// Select fragment (in second) for input context, used for file
-		//  splitting, Each interval should be continuous and not overlapping
+		// Select fragment (in second) for input context, used for file splitting
 		void PickupFragment(const double n_dStart, const double n_dLength);
 
 		/*
