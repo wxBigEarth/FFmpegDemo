@@ -27,6 +27,11 @@ namespace avstudio
 	{
 		Release();
 
+		if (n_nInputWidth == n_nOutputWidth &&
+			n_nInputHeight == n_nOutputHeight &&
+			n_eInputPixelFormat == n_eOutputPixelFormat)
+			return Context;
+
 		Context = sws_getContext(
 			n_nInputWidth, n_nInputHeight, n_eInputPixelFormat,
 			n_nOutputWidth, n_nOutputHeight, n_eOutputPixelFormat,
@@ -74,12 +79,12 @@ namespace avstudio
 		}
 	}
 
-	int FSwsScale::Scale(const uint8_t** n_InputData, const int* n_InputLineSize)
+	int FSwsScale::Scale(uint8_t** n_InputData, const int* n_InputLineSize)
 	{
 		return Scale(n_InputData, n_InputLineSize, CaleData, LineSize);
 	}
 
-	int FSwsScale::Scale(const uint8_t** n_InputData, const int* n_InputLineSize,
+	int FSwsScale::Scale(uint8_t** n_InputData, const int* n_InputLineSize,
 		uint8_t** n_OutputData, const int* n_OuputLineSize)
 	{
 		if (!Context) return 0;
@@ -93,7 +98,7 @@ namespace avstudio
 
 	int FSwsScale::Scale(const AVFrame* n_InputFrame)
 	{
-		return Scale((const uint8_t**)n_InputFrame->data, n_InputFrame->linesize);
+		return Scale((uint8_t**)n_InputFrame->data, n_InputFrame->linesize);
 	}
 
 }

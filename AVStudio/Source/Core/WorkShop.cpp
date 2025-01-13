@@ -84,18 +84,16 @@ namespace avstudio
 	{
 		if (IsCompriseMedia(m_nMediaMask, AVMediaType::AVMEDIA_TYPE_VIDEO))
 		{
-			if (m_eCtxType == ECtxType::CT_Output)
+			if (VideoParts.Codec && VideoParts.Codec->Context)
 			{
-				if (VideoParts.Codec && VideoParts.Codec->Context)
-				{
-					double a = VideoParts.Codec->Context->time_base.den * 1.0 /
-						VideoParts.Codec->Context->time_base.num /
-						VideoParts.Codec->Context->framerate.num *
-						VideoParts.Codec->Context->framerate.den;
-					VideoParts.Duration = (int64_t)(a);
-				}
+				double a = VideoParts.Codec->Context->time_base.den * 1.0 /
+					VideoParts.Codec->Context->time_base.num /
+					VideoParts.Codec->Context->framerate.num *
+					VideoParts.Codec->Context->framerate.den;
+				VideoParts.Duration = (int64_t)(a);
 			}
-			else if (m_eCtxType == ECtxType::CT_Input &&
+			
+			if (m_eCtxType == ECtxType::CT_Input &&
 				VideoParts.nStreamIndex >= 0)
 			{
 				ThrowExceptionExpr((IsValid() && !VideoParts.Stream) ||
@@ -114,18 +112,16 @@ namespace avstudio
 		
 		if (IsCompriseMedia(m_nMediaMask, AVMediaType::AVMEDIA_TYPE_AUDIO))
 		{
-			if (m_eCtxType == ECtxType::CT_Output)
+			if (AudioParts.Codec && AudioParts.Codec->Context)
 			{
-				if (AudioParts.Codec && AudioParts.Codec->Context)
-				{
-					auto a = AudioParts.Codec->Context->time_base.den * 1.0 /
-						(double)AudioParts.Codec->Context->sample_rate *
-						AudioParts.Codec->Context->frame_size /
-						AudioParts.Codec->Context->time_base.num;
-					AudioParts.Duration = (int64_t)(a);
-				}
+				auto a = AudioParts.Codec->Context->time_base.den * 1.0 /
+					(double)AudioParts.Codec->Context->sample_rate *
+					AudioParts.Codec->Context->frame_size /
+					AudioParts.Codec->Context->time_base.num;
+				AudioParts.Duration = (int64_t)(a);
 			}
-			else if (m_eCtxType == ECtxType::CT_Input &&
+			
+			if (m_eCtxType == ECtxType::CT_Input &&
 				AudioParts.nStreamIndex >= 0)
 			{
 				ThrowExceptionExpr((IsValid() && !AudioParts.Stream) ||
@@ -517,6 +513,7 @@ namespace avstudio
 					n_Output->VideoParts.Codec->Context->width,
 					n_Output->VideoParts.Codec->Context->height,
 					n_Output->VideoParts.Codec->GetPixelFormat());
+				if (!VideoParts.Sws->Context) VideoParts.Sws.reset();
 			}
 		}
 

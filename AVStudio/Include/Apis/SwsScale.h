@@ -35,8 +35,8 @@ namespace avstudio
 
 		// Scale video data
 		// return          the height of the output slice
-		int Scale(const uint8_t** n_InputData, const int* n_InputLineSize);
-		int Scale(const uint8_t** n_InputData, const int* n_InputLineSize,
+		int Scale(uint8_t** n_InputData, const int* n_InputLineSize);
+		int Scale(uint8_t** n_InputData, const int* n_InputLineSize,
 			uint8_t** n_OutputData, const int* n_OuputLineSize);
 		int Scale(const AVFrame* n_InputFrame);
 

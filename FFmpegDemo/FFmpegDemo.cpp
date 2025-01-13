@@ -52,8 +52,7 @@ static void Cover()
 // 		auto Filter = std::make_shared<CCombineFilter>();
 // 		Filter->Init(Output->VideoParts.Codec);
 // 		Filter->AddFilter("vflip", nullptr, true);
-// 
-// 		Input->VideoParts.Filter = Filter;
+
 		// CEditor will create codec and stream as need
 		// if they are not exists.
 

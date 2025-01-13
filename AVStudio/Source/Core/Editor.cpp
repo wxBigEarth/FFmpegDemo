@@ -133,7 +133,7 @@ namespace avstudio
 	{
 		Start();
 
-		while (!IsRunning())
+		while (!IsRunning() && m_nStatus > 0)
 			std::this_thread::sleep_for(std::chrono::microseconds(10));
 	}
 
@@ -521,6 +521,7 @@ namespace avstudio
 			m_bFreeHandle = true;
 		}
 
+		if (!m_IoHandle) return;
 		m_IoHandle->Init(m_Output->GetMediaMask());
 		m_IoHandle->SetupStopCallback([this]() { Stop(); });
 	}
