@@ -32,6 +32,9 @@ namespace avstudio
 
 		// Real pts while reading the packet from input context
 		int64_t			PacketPts = 0;
+		// For input context, pts of AVFrame which decoded from AVPacket
+		// For output context, keep the max pts of last input context
+		int64_t 		FramePts = 0;
 
 		AVStream*		Stream = nullptr;
 

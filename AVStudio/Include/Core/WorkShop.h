@@ -166,11 +166,6 @@ namespace avstudio
 		// Index in the group
 		unsigned char	m_nGroupIndex = 0;
 
-		// Count of video AVFrame pts
-		int64_t			m_nVideoPts = 0;
-		// Count of audio AVFrame pts
-		int64_t			m_nAudioPts = 0;
-
 		// Setting
 		std::shared_ptr<FSetting>		m_Setting = nullptr;
 

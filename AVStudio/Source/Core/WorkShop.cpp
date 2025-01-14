@@ -74,8 +74,6 @@ namespace avstudio
 
 		m_nMediaMask = 0;
 		m_nGroupId = 0;
-		m_nVideoPts = 0;
-		m_nAudioPts = 0;
 
 		Fmt.Release();
 	}
@@ -590,13 +588,13 @@ namespace avstudio
 
 		if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_VIDEO)
 		{
-			nResult = m_nVideoPts;
-			m_nVideoPts += n_nPts;
+			nResult = VideoParts.FramePts;
+			VideoParts.FramePts += n_nPts;
 		}
 		else if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_AUDIO)
 		{
-			nResult = m_nAudioPts;
-			m_nAudioPts += n_nPts;
+			nResult = AudioParts.FramePts;
+			AudioParts.FramePts += n_nPts;
 		}
 
 		return nResult;
@@ -606,11 +604,11 @@ namespace avstudio
 	{
 		if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_VIDEO)
 		{
-			m_nVideoPts += n_nPts;
+			VideoParts.FramePts += n_nPts;
 		}
 		else if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_AUDIO)
 		{
-			m_nAudioPts += n_nPts;
+			AudioParts.FramePts += n_nPts;
 		}
 	}
 
@@ -620,11 +618,11 @@ namespace avstudio
 
 		if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_VIDEO)
 		{
-			nResult = m_nVideoPts;
+			nResult = VideoParts.FramePts;
 		}
 		else if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_AUDIO)
 		{
-			nResult = m_nAudioPts;
+			nResult = AudioParts.FramePts;
 		}
 
 		return nResult;
