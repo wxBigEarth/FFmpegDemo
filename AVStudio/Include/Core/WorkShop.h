@@ -141,13 +141,17 @@ namespace avstudio
 	protected:
 		struct FFragment
 		{
+			bool vOk = false;
+			bool aOk = false;
+
+			double Start = 0.0;
 			// Video Section
-			int64_t vFrom = 0;
 			int64_t vTo = 0;
 
 			// Audio Section
-			int64_t aFrom = 0;
 			int64_t aTo = 0;
+
+			const bool IsOk() const { return vOk && aOk; }
 		};
 
 	protected:
@@ -172,6 +176,8 @@ namespace avstudio
 
 		// For input context only, used to split input context
 		std::vector<FFragment>			m_vFragments;
+		// Indicate which fragment is in use
+		size_t							m_nFragmentIndex = 0;
 
 		std::function<void(AVCodecContext*)> m_funcMiddleware = nullptr;
 	};

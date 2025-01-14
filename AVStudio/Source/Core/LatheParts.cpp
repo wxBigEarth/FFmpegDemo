@@ -10,7 +10,6 @@ namespace avstudio
 		nStreamIndex = -1;
 		Duration = 0;
 		PacketPts = 0;
-		nFragmentIndex = 0;
 
 		Stream = nullptr;
 

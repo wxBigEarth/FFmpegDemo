@@ -100,13 +100,6 @@ namespace avstudio
 					!VideoParts.Codec ||
 					!VideoParts.Codec->Context,
 					"Video stream: not initialize complete\n");
-
-				if (m_vFragments.size() > 0)
-				{
-					Fmt.SeekFrame(VideoParts.nFragmentIndex,
-						m_vFragments[VideoParts.nFragmentIndex].vFrom,
-						AVSEEK_FLAG_FRAME | AVSEEK_FLAG_BACKWARD);
-				}
 			}
 		}
 		
@@ -128,14 +121,14 @@ namespace avstudio
 					!AudioParts.Codec ||
 					!AudioParts.Codec->Context,
 					"Audio stream: not initialize complete\n");
-
-				if (m_vFragments.size() > 0)
-				{
-					Fmt.SeekFrame(AudioParts.nStreamIndex,
-						m_vFragments[AudioParts.nFragmentIndex].aFrom,
-						AVSEEK_FLAG_FRAME | AVSEEK_FLAG_BYTE);
-				}
 			}
+		}
+
+		if (m_vFragments.size() > 0)
+		{
+			Fmt.SeekFrame(-1,
+				(int64_t)(m_vFragments[m_nFragmentIndex].Start * AV_TIME_BASE),
+				AVSEEK_FLAG_FRAME | AVSEEK_FLAG_BACKWARD);
 		}
 	}
 
@@ -644,19 +637,16 @@ namespace avstudio
 			n_dLength <= 0) return;
 
 		FFragment Section;
-		double dTo = n_dStart + n_dLength;
+		Section.Start = n_dStart;
+		Section.vOk = !VideoParts.Stream;
+		Section.aOk = !AudioParts.Stream;
 
+		double dTo = n_dStart + n_dLength;
 		if (VideoParts.Stream)
-		{
-			Section.vFrom = (int64_t)(n_dStart / av_q2d(VideoParts.Stream->time_base));
 			Section.vTo = (int64_t)(dTo / av_q2d(VideoParts.Stream->time_base));
-		}
 
 		if (AudioParts.Stream)
-		{
-			Section.aFrom = (int64_t)(n_dStart / av_q2d(AudioParts.Stream->time_base));
 			Section.aTo = (int64_t)(dTo / av_q2d(AudioParts.Stream->time_base));
-		}
 
 		m_vFragments.emplace_back(Section);
 	}
@@ -666,50 +656,34 @@ namespace avstudio
 		int64_t nResult = 0;
 		int nSize = (int)m_vFragments.size();
 		if (nSize == 0) return nResult;
+		if (m_nFragmentIndex >= nSize) return AVERROR_EOF;
 
 		nResult = -1;
 
-		do 
+		if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_VIDEO && VideoParts.Stream)
 		{
-			if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_VIDEO && VideoParts.Stream)
+			if (n_nPts >= m_vFragments[m_nFragmentIndex].vTo)
+				m_vFragments[m_nFragmentIndex].vOk = true;
+			else nResult = VideoParts.PacketPts;
+		}
+		else if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_AUDIO && AudioParts.Stream)
+		{
+			if (n_nPts >= m_vFragments[m_nFragmentIndex].aTo)
+				m_vFragments[m_nFragmentIndex].aOk = true;
+			else nResult = AudioParts.PacketPts;
+		}
+
+		if (m_vFragments[m_nFragmentIndex].IsOk)
+		{
+			m_nFragmentIndex++;
+			if (m_nFragmentIndex < nSize)
 			{
-				if (VideoParts.nFragmentIndex >= nSize) break;
-				
-				if (n_nPts >= m_vFragments[VideoParts.nFragmentIndex].vTo)
-				{
-					VideoParts.nFragmentIndex++;
-					AudioParts.nFragmentIndex++;
-					if (VideoParts.nFragmentIndex >= nSize) break;
-
-					Fmt.SeekFrame(VideoParts.nStreamIndex,
-						m_vFragments[VideoParts.nFragmentIndex].vFrom,
-						AVSEEK_FLAG_BACKWARD | AVSEEK_FLAG_FRAME);
-				}
-				else nResult = VideoParts.PacketPts;
+				Fmt.SeekFrame(-1,
+					(int64_t)(m_vFragments[m_nFragmentIndex].Start * AV_TIME_BASE),
+					AVSEEK_FLAG_FRAME | AVSEEK_FLAG_BACKWARD);
 			}
-			else if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_AUDIO && AudioParts.Stream)
-			{
-				if (AudioParts.nFragmentIndex >= nSize) break;
-
-				if (n_nPts >= m_vFragments[AudioParts.nFragmentIndex].aTo)
-				{
-					VideoParts.nFragmentIndex++;
-					AudioParts.nFragmentIndex++;
-					if (AudioParts.nFragmentIndex >= nSize) break;
-
-					Fmt.SeekFrame(AudioParts.nStreamIndex,
-						m_vFragments[AudioParts.nFragmentIndex].aFrom,
-						AVSEEK_FLAG_BYTE | AVSEEK_FLAG_FRAME);
-				}
-				else nResult = AudioParts.PacketPts;
-			}
-
-		} while (false);
-
-
-		if ((!VideoParts.Stream || VideoParts.nFragmentIndex >= nSize)
-			&& (!AudioParts.Stream || AudioParts.nFragmentIndex >= nSize))
-			nResult = AVERROR_EOF;
+			else nResult = AVERROR_EOF;
+		}
 
 		return nResult;
 	}

@@ -32,8 +32,6 @@ namespace avstudio
 
 		// Real pts while reading the packet from input context
 		int64_t			PacketPts = 0;
-		// Indicate which fragment is in use
-		int				nFragmentIndex = 0;
 
 		AVStream*		Stream = nullptr;
 
