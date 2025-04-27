@@ -28,11 +28,11 @@ static void Cover()
 		CEditor Editor;
 
 #if 1
-		auto Input = Editor.OpenInputFile("1.mp4");
-		auto Output = Editor.AllocOutputFile("1.avi");
+		auto Input = Editor.OpenInputFile("../../videos/1.mp4");
+		auto Output = Editor.AllocOutputFile("../../videos/1.avi");
 #else
-		auto Input = Editor.OpenInputFile("1.avi");
-		auto Output = Editor.AllocOutputFile("1-1.mp4");
+		auto Input = Editor.OpenInputFile("../../videos/1.avi");
+		auto Output = Editor.AllocOutputFile("../../videos/1-1.mp4");
 #endif
 // 		Output->SetupMiddleware(
 // 			[Input, Output](AVCodecContext* Ctx) {
@@ -145,8 +145,8 @@ static void HwCover()
 		auto Setting = Editor.GetSetting();
 		Setting->bEnableHwAccel = true;
 
-		auto Input = Editor.OpenInputFile("1.avi");
-		auto Output = Editor.AllocOutputFile("1-1.mp4");
+		auto Input = Editor.OpenInputFile("../../videos/1.avi");
+		auto Output = Editor.AllocOutputFile("../../videos/1-1.mp4");
 
 		Editor.StartUntilRunning();
 		Editor.Join();
@@ -164,9 +164,9 @@ static void Merge()
 	{
 		CEditor Editor;
 
-		auto Input1 = Editor.OpenInputFile("1.mp4");
-		auto Input2 = Editor.OpenInputFile("2.mp4");
-		auto Output = Editor.AllocOutputFile("3.mp4");
+		auto Input1 = Editor.OpenInputFile("../../videos/1.mp4");
+		auto Input2 = Editor.OpenInputFile("../../videos/2.mp4");
+		auto Output = Editor.AllocOutputFile("../../videos/3.mp4");
 
 		Editor.StartUntilRunning();
 		Editor.Join();
@@ -184,8 +184,8 @@ static void DetachAudioStream()
 	{
 		CEditor Editor;
 
-		auto Input = Editor.OpenInputFile("1.mp4", kNO_GROUP, MEDIAMASK_AUDIO);
-		auto Output = Editor.AllocOutputFile("1.mp3");
+		auto Input = Editor.OpenInputFile("../../videos/1.mp4", kNO_GROUP, MEDIAMASK_AUDIO);
+		auto Output = Editor.AllocOutputFile("../../videos/1.mp3");
 
 		Editor.StartUntilRunning();
 		Editor.Join();
@@ -203,10 +203,10 @@ static void MixAudio()
 	{
 		CEditor Editor;
 
-		auto input3 = Editor.OpenInputFile("4.mp4");
-		auto Input = Editor.OpenInputFile("2.mp4", 0);
-		auto Input2 = Editor.OpenInputFile("1.mp3", 0);
-		auto Output = Editor.AllocOutputFile("2-2.mp4");
+		auto input3 = Editor.OpenInputFile("../../videos/4.mp4");
+		auto Input = Editor.OpenInputFile("../../videos/2.mp4", 0);
+		auto Input2 = Editor.OpenInputFile("../../videos/1.mp3", 0);
+		auto Output = Editor.AllocOutputFile("../../videos/2-2.mp4");
 
 		// Enable audio stream
 		Output->EnableStream(AVMediaType::AVMEDIA_TYPE_AUDIO);
@@ -249,8 +249,8 @@ static void Play()
 		auto Setting = Editor.GetSetting();
 		Setting->bEnableHwAccel = true;
 
-		//auto Input = Editor.OpenInputFile("4.mp4", kNO_GROUP, MEDIAMASK_VIDEO);
-		auto Input = Editor.OpenInputFile("4.mp4");
+		//auto Input = Editor.OpenInputFile("../../videos/4.mp4", kNO_GROUP, MEDIAMASK_VIDEO);
+		auto Input = Editor.OpenInputFile("../../videos/4.mp4");
 		auto Output = Editor.AllocOutputFile("");
 		auto Filter = std::make_shared<CCombineFilter>();
 
@@ -319,8 +319,8 @@ static void RecordAudio()
 		CEditor Editor;
 
 		auto Input = Editor.OpenInputFile(sUtf8, kNO_GROUP, 
-			MEDIAMASK_AV, Device.InputFormat);
-		auto Output = Editor.AllocOutputFile("record.aac");
+			MEDIAMASK_AUDIO, Device.InputFormat);
+		auto Output = Editor.AllocOutputFile("../../videos/record.aac");
 
 		Editor.StartUntilRunning();
 
@@ -385,7 +385,7 @@ public:
 
 			// Create an empty input context
 			auto Input = Editor.OpenInputFile("", kNO_GROUP, MEDIAMASK_AV);
-			auto Output = Editor.AllocOutputFile("output.mp4");
+			auto Output = Editor.AllocOutputFile("../../videos/output.mp4");
 
 			// Build decode codec for input context
 			// Maybe the Pixel Format/ Sample Format of the source data 

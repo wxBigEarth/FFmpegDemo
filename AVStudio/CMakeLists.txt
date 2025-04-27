@@ -75,14 +75,21 @@ add_library(AVStudio SHARED
 
 target_include_directories(
 	AVStudio
-	PUBLIC ${PROJECT_SOURCE_DIR}/FFmpeg
-	PUBLIC ${PROJECT_SOURCE_DIR}/SDL
+	PUBLIC ${PROJECT_SOURCE_DIR}/../FFmpeg
+	PUBLIC ${PROJECT_SOURCE_DIR}/../SDL
 )
 
 target_link_libraries(
 	AVStudio
-	PUBLIC ${PROJECT_SOURCE_DIR}/FFmpeg/lib/*.lib
-	PUBLIC ${PROJECT_SOURCE_DIR}/SDL/lib/SDL2.lib
+	PUBLIC ${PROJECT_SOURCE_DIR}/../FFmpeg/lib/avcodec.lib
+	PUBLIC ${PROJECT_SOURCE_DIR}/../FFmpeg/lib/avdevice.lib
+	PUBLIC ${PROJECT_SOURCE_DIR}/../FFmpeg/lib/avfilter.lib
+	PUBLIC ${PROJECT_SOURCE_DIR}/../FFmpeg/lib/avformat.lib
+	PUBLIC ${PROJECT_SOURCE_DIR}/../FFmpeg/lib/avutil.lib
+	PUBLIC ${PROJECT_SOURCE_DIR}/../FFmpeg/lib/postproc.lib
+	PUBLIC ${PROJECT_SOURCE_DIR}/../FFmpeg/lib/swresample.lib
+	PUBLIC ${PROJECT_SOURCE_DIR}/../FFmpeg/lib/swscale.lib
+	PUBLIC ${PROJECT_SOURCE_DIR}/../SDL/lib/SDL2.lib
 )
 
 #file(GLOB FFmpegDll ${PROJECT_SOURCE_DIR}/FFmpeg/bin/*.dll)

@@ -671,7 +671,7 @@ namespace avstudio
 			else nResult = AudioParts.PacketPts;
 		}
 
-		if (m_vFragments[m_nFragmentIndex].IsOk)
+		if (m_vFragments[m_nFragmentIndex].IsOk())
 		{
 			m_nFragmentIndex++;
 			if (m_nFragmentIndex < nSize)
