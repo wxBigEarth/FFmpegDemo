@@ -237,50 +237,49 @@ namespace avstudio
 		auto eCodecId = n_Stream->codecpar->codec_id;
 		auto Codec = FindEncodeCodec(eCodecId, m_Setting);
 		if (!Codec) return Result;
+		
+		if (!IsCompriseMedia(m_nMediaMask, Codec->type)) return Result;
 
-		if (n_Stream->codecpar->codec_type == AVMediaType::AVMEDIA_TYPE_VIDEO && 
-			IsCompriseMedia(m_nMediaMask, AVMediaType::AVMEDIA_TYPE_VIDEO))
+		if (n_Stream->codecpar->codec_type == AVMediaType::AVMEDIA_TYPE_VIDEO)
 		{
 			Result = VideoParts.Codec;
 			if (!Result)
 			{
 				VideoParts.Codec = FCodecContext::BuildCodec(Codec, m_Setting);
-				auto ctx = VideoParts.Codec->Context;
 				VideoParts.Codec->CopyCodecParameter(n_Stream);
-
-				ctx->framerate = n_Stream->r_frame_rate;
-				// if ctx->framerate.num too large, first frame will be gray
-				if (ctx->framerate.num > 60)
-					ctx->framerate = AVRational{ 25, 1 };
-
-				ctx->time_base = n_Stream->time_base;
-				ctx->gop_size = 12;
-
-				// enable show Thumbnail
-				if (IsValid() &&
-					Fmt.Context->oformat &&
-					(Fmt.Context->oformat->flags & AVFMT_GLOBALHEADER))
-					ctx->flags = AV_CODEC_FLAG_GLOBAL_HEADER;
-
+				
+				auto ctx = VideoParts.Codec->Context;
 				Result = VideoParts.Codec;
 
-				if (m_funcMiddleware) m_funcMiddleware(Result->Context);
-				VideoParts.Codec->ConfigureHwAccel();
+				ctx->framerate = n_Stream->r_frame_rate;
+				ctx->time_base = n_Stream->time_base;
+				ctx->gop_size = 12;
 			}
+			
+			// if ctx->framerate.num too large, first frame will be gray
+			if (ctx->framerate.num > 60)
+				ctx->framerate = AVRational{ 25, 1 };
+
+			// enable show Thumbnail
+			if (IsValid() &&
+				Fmt.Context->oformat &&
+				(Fmt.Context->oformat->flags & AVFMT_GLOBALHEADER))
+				ctx->flags = AV_CODEC_FLAG_GLOBAL_HEADER;
+
+			if (m_funcMiddleware) m_funcMiddleware(Result->Context);
+			VideoParts.Codec->ConfigureHwAccel();
 		}
-		else if (n_Stream->codecpar->codec_type == AVMediaType::AVMEDIA_TYPE_AUDIO && 
-			IsCompriseMedia(m_nMediaMask, AVMediaType::AVMEDIA_TYPE_AUDIO))
+		else if (n_Stream->codecpar->codec_type == AVMediaType::AVMEDIA_TYPE_AUDIO)
 		{
 			Result = AudioParts.Codec;
 			if (!Result)
 			{
 				AudioParts.Codec = FCodecContext::BuildCodec(Codec, m_Setting);
 				AudioParts.Codec->CopyCodecParameter(n_Stream);
-
 				Result = AudioParts.Codec;
-
-				if (m_funcMiddleware) m_funcMiddleware(Result->Context);
 			}
+
+			if (m_funcMiddleware) m_funcMiddleware(Result->Context);
 		}
 
 		return Result;
@@ -322,10 +321,10 @@ namespace avstudio
 					if (!Fmt.IsValid()) ctx->frame_size = 
 						n_InputCodecContext->frame_size;
 				}
-
-				if (m_funcMiddleware) m_funcMiddleware(Result->Context);
-				CodecContextAddition(ctx);
 			}
+
+			if (m_funcMiddleware) m_funcMiddleware(Result->Context);
+			CodecContextAddition(ctx);
 		}
 		else if (Codec->type == AVMediaType::AVMEDIA_TYPE_VIDEO)
 		{
@@ -348,22 +347,22 @@ namespace avstudio
 						n_InputCodecContext->pix_fmt);
 					ctx->gop_size = n_InputCodecContext->gop_size;
 				}
-
-				// if ctx->framerate.num too large, first frame will be gray
-				if (ctx->framerate.num > 60)
-					ctx->framerate = AVRational{ 25, 1 };
-
-				// enable show Thumbnail
-				if (IsValid() && 
-					Fmt.Context->oformat &&
-					(Fmt.Context->oformat->flags & AVFMT_GLOBALHEADER))
-					ctx->flags = AV_CODEC_FLAG_GLOBAL_HEADER;
-
-				if (m_funcMiddleware) m_funcMiddleware(Result->Context);
-
-				CodecContextAddition(ctx);
-				VideoParts.Codec->ConfigureHwAccel();
 			}
+
+			// if ctx->framerate.num too large, first frame will be gray
+			if (ctx->framerate.num > 60)
+				ctx->framerate = AVRational{ 25, 1 };
+
+			// enable show Thumbnail
+			if (IsValid() && 
+				Fmt.Context->oformat &&
+				(Fmt.Context->oformat->flags & AVFMT_GLOBALHEADER))
+				ctx->flags = AV_CODEC_FLAG_GLOBAL_HEADER;
+
+			if (m_funcMiddleware) m_funcMiddleware(Result->Context);
+
+			CodecContextAddition(ctx);
+			VideoParts.Codec->ConfigureHwAccel();
 		}
 
 		return Result;
