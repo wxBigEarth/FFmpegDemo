@@ -71,6 +71,11 @@ namespace avstudio
 		return Result;
 	}
 
+	std::shared_ptr<FWorkShop> CEditor::GetOutputContext()
+	{
+		return m_Output;
+	}
+
 	std::shared_ptr<avstudio::FSetting> CEditor::GetSetting()
 	{
 		return m_Setting;
@@ -149,11 +154,7 @@ namespace avstudio
 		else
 		{
 			// Invalid output context, decode anyway
-			for (size_t i = 0; i < m_vInputCtx.size(); i++)
-			{
-				auto Item = m_vInputCtx[i]->Input();
-				Item->SetDecodeFlag(1);
-			}
+			SetDecodeFlag(1, AVMediaType::AVMEDIA_TYPE_UNKNOWN);
 		}
 
 		return 0;
@@ -175,8 +176,6 @@ namespace avstudio
 
 		if (!Input) return 0;
 
-		// Is create default codec
-		bool bCreate = false;
 		// Is input context should be decoded
 		bool bDecode = false;
 
@@ -186,8 +185,7 @@ namespace avstudio
 
 		m_Output->EnableStream(AVMediaType::AVMEDIA_TYPE_VIDEO);
 
-		// No video stream
-		if (!m_Output->VideoParts.Stream && 
+		if (!m_Output->VideoParts.Codec && 
 			(Input->VideoParts.Filter ||
 				nCount > 1 || 
 				Input->VideoParts.CodecID() != vDefaultId))
@@ -198,7 +196,6 @@ namespace avstudio
 			// 3. Only one input stream, 
 			//		but the codec id is not equal to 
 			//		default codec id of output video stream
-			bCreate = true;
 			m_Output->BuildCodecContext(
 				vDefaultId, Input->VideoParts.Codec->Context);
 		}
@@ -212,9 +209,8 @@ namespace avstudio
 			{
 				bDecode = true;
 				m_Output->OpenCodecContext(AVMediaType::AVMEDIA_TYPE_VIDEO);
+				SetDecodeFlag(1, AVMediaType::AVMEDIA_TYPE_VIDEO);
 			}
-
-			if (bDecode) SetDecodeFlag(1, AVMediaType::AVMEDIA_TYPE_VIDEO);
 		}
 
 		if (!m_Output->VideoParts.Stream)
@@ -233,7 +229,7 @@ namespace avstudio
 					AVMediaType::AVMEDIA_TYPE_VIDEO);
 			}
 		}
-		else if (bCreate && m_Output->VideoParts.Codec)
+		else if (m_Output->VideoParts.Codec)
 		{
 			int ret = avcodec_parameters_from_context(
 				m_Output->VideoParts.Stream->codecpar,
@@ -255,7 +251,7 @@ namespace avstudio
 
 		for (size_t i = 0; i < m_vInputCtx.size(); i++)
 		{
-			if (m_vInputCtx[i]->Input()->AudioParts.Stream)
+			if (m_vInputCtx[i]->Input()->AudioParts.Codec)
 			{
 				if (!Input) Input = m_vInputCtx[i]->Input();
 				nCount++;
@@ -264,8 +260,6 @@ namespace avstudio
 
 		if (!Input) return 0;
 
-		// Is create default codec
-		bool bCreate = false;
 		// Is input context should be decoded
 		bool bDecode = false;
 
@@ -275,8 +269,7 @@ namespace avstudio
 
 		m_Output->EnableStream(AVMediaType::AVMEDIA_TYPE_AUDIO);
 
-		// No video stream
-		if (!m_Output->AudioParts.Stream &&
+		if (!m_Output->AudioParts.Codec &&
 			(Input->AudioParts.Filter ||
 				nCount > 1 || 
 				Input->AudioParts.CodecID() != aDefaultId))
@@ -287,7 +280,6 @@ namespace avstudio
 			// 3. Only one input stream, 
 			//		but the codec id is not equal to 
 			//		default codec id of output video stream
-			bCreate = true;
 			m_Output->BuildCodecContext(
 				aDefaultId, Input->AudioParts.Codec->Context);
 		}
@@ -301,9 +293,8 @@ namespace avstudio
 			{
 				bDecode = true;
 				m_Output->OpenCodecContext(AVMediaType::AVMEDIA_TYPE_AUDIO);
+				SetDecodeFlag(1, AVMediaType::AVMEDIA_TYPE_AUDIO);
 			}
-
-			if (bDecode) SetDecodeFlag(1, AVMediaType::AVMEDIA_TYPE_AUDIO);
 		}
 
 		if (!m_Output->AudioParts.Stream)
@@ -322,7 +313,7 @@ namespace avstudio
 					AVMediaType::AVMEDIA_TYPE_AUDIO);
 			}
 		}
-		else if (bCreate && m_Output->AudioParts.Codec)
+		else if (m_Output->AudioParts.Codec)
 		{
 			int ret = avcodec_parameters_from_context(
 				m_Output->AudioParts.Stream->codecpar,

@@ -41,6 +41,9 @@ namespace avstudio
 		// Get the input context by index
 		std::shared_ptr<FWorkShop> GetInputContext(const unsigned int n_nIndex);
 
+		// Get the output context
+		std::shared_ptr<FWorkShop> GetOutputContext();
+
 		// Get setting object pointer
 		std::shared_ptr<FSetting> GetSetting();
 

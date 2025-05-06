@@ -62,6 +62,7 @@ namespace avstudio
 				FillAudioFrame(m_aFrame, n_Data, n_nSize);
 				m_aFrame->pts = m_naFrameIndex * m_aFrame->nb_samples;
 				m_naFrameIndex++;
+				Frame = m_aFrame;
 			}
 		}
 

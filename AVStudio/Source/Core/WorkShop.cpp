@@ -298,8 +298,9 @@ namespace avstudio
 		auto Codec = FindEncodeCodec(n_eCodecID, m_Setting);
 		if (!Codec) return Result;
 
-		if (Codec->type == AVMediaType::AVMEDIA_TYPE_AUDIO && 
-			IsCompriseMedia(m_nMediaMask, Codec->type))
+		if (!IsCompriseMedia(m_nMediaMask, Codec->type)) return Result;
+
+		if (Codec->type == AVMediaType::AVMEDIA_TYPE_AUDIO)
 		{
 			Result = AudioParts.Codec;
 			if (!Result)
@@ -326,8 +327,7 @@ namespace avstudio
 				CodecContextAddition(ctx);
 			}
 		}
-		else if (Codec->type == AVMediaType::AVMEDIA_TYPE_VIDEO && 
-			IsCompriseMedia(m_nMediaMask, Codec->type))
+		else if (Codec->type == AVMediaType::AVMEDIA_TYPE_VIDEO)
 		{
 			Result = VideoParts.Codec;
 			if (!Result)
@@ -390,9 +390,9 @@ namespace avstudio
 	AVStream* FWorkShop::FindStream(AVMediaType n_eMediaType)
 	{
 		AVStream* Stream = nullptr;
+		if (!IsCompriseMedia(m_nMediaMask, n_eMediaType)) return Stream;
 
-		if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_VIDEO &&
-			IsCompriseMedia(m_nMediaMask, n_eMediaType))
+		if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_VIDEO)
 		{
 			if (VideoParts.nStreamIndex < 0)
 			{
@@ -402,8 +402,7 @@ namespace avstudio
 
 			Stream = VideoParts.Stream;
 		}
-		else if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_AUDIO &&
-			IsCompriseMedia(m_nMediaMask, n_eMediaType))
+		else if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_AUDIO)
 		{
 			if (AudioParts.nStreamIndex < 0)
 			{
@@ -424,16 +423,18 @@ namespace avstudio
 		if (m_eCtxType != ECtxType::CT_Output) return;
 
 		if (n_Input->VideoParts.Stream && 
-			n_eMediaType == AVMediaType::AVMEDIA_TYPE_VIDEO && 
-			IsCompriseMedia(m_nMediaMask, n_eMediaType))
+			(n_eMediaType == AVMediaType::AVMEDIA_TYPE_VIDEO ||
+				n_eMediaType == AVMediaType::AVMEDIA_TYPE_UNKNOWN) &&
+			IsCompriseMedia(m_nMediaMask, AVMediaType::AVMEDIA_TYPE_VIDEO))
 		{
 			VideoParts.Stream = Fmt.BuildStream(n_Input->VideoParts.Stream);
 			VideoParts.nStreamIndex = VideoParts.Stream->index;
 		}
 
 		if (n_Input->AudioParts.Stream && 
-			n_eMediaType == AVMediaType::AVMEDIA_TYPE_AUDIO && 
-			IsCompriseMedia(m_nMediaMask, n_eMediaType))
+			(n_eMediaType == AVMediaType::AVMEDIA_TYPE_AUDIO ||
+				n_eMediaType == AVMediaType::AVMEDIA_TYPE_UNKNOWN) &&
+			IsCompriseMedia(m_nMediaMask, AVMediaType::AVMEDIA_TYPE_AUDIO))
 		{
 			AudioParts.Stream = Fmt.BuildStream(n_Input->AudioParts.Stream);
 			AudioParts.nStreamIndex = AudioParts.Stream->index;
@@ -444,18 +445,15 @@ namespace avstudio
 		AVMediaType n_eMediaType /*= AVMediaType::AVMEDIA_TYPE_UNKNOWN*/)
 	{
 		if (m_eCtxType != ECtxType::CT_Output) return;
+		if (!IsCompriseMedia(m_nMediaMask, n_eMediaType)) return;
 
-		if ((n_eMediaType == AVMediaType::AVMEDIA_TYPE_VIDEO ||
-			n_eMediaType == AVMediaType::AVMEDIA_TYPE_UNKNOWN) && 
-			IsCompriseMedia(m_nMediaMask, AVMediaType::AVMEDIA_TYPE_VIDEO))
+		if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_VIDEO)
 		{
 			VideoParts.Stream = Fmt.BuildStream(n_CodecContext);
 			VideoParts.nStreamIndex = VideoParts.Stream->index;
 		}
 
-		if ((n_eMediaType == AVMediaType::AVMEDIA_TYPE_AUDIO ||
-			n_eMediaType == AVMediaType::AVMEDIA_TYPE_UNKNOWN) && 
-			IsCompriseMedia(m_nMediaMask, AVMediaType::AVMEDIA_TYPE_AUDIO))
+		if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_AUDIO)
 		{
 			AudioParts.Stream = Fmt.BuildStream(n_CodecContext);
 			AudioParts.nStreamIndex = AudioParts.Stream->index;
@@ -486,10 +484,12 @@ namespace avstudio
 	void FWorkShop::CreateFrameConverter(std::shared_ptr<FWorkShop> n_Output,
 		AVMediaType n_eMediaType /*= AVMediaType::AVMEDIA_TYPE_UNKNOWN*/)
 	{
+		if (!n_Output) return;
 		if (m_eCtxType != ECtxType::CT_Input) return;
 
-		if ((n_eMediaType == AVMediaType::AVMEDIA_TYPE_VIDEO ||
-			n_eMediaType == AVMediaType::AVMEDIA_TYPE_UNKNOWN) &&
+		if (n_Output->VideoParts.Codec &&
+			(n_eMediaType == AVMediaType::AVMEDIA_TYPE_VIDEO ||
+				n_eMediaType == AVMediaType::AVMEDIA_TYPE_UNKNOWN) &&
 			IsCompriseMedia(m_nMediaMask, AVMediaType::AVMEDIA_TYPE_VIDEO))
 		{
 			if (VideoParts.nFlag <= 0)
@@ -508,8 +508,9 @@ namespace avstudio
 			}
 		}
 
-		if ((n_eMediaType == AVMediaType::AVMEDIA_TYPE_AUDIO ||
-			n_eMediaType == AVMediaType::AVMEDIA_TYPE_UNKNOWN) &&
+		if (n_Output->AudioParts.Codec &&
+			(n_eMediaType == AVMediaType::AVMEDIA_TYPE_AUDIO ||
+				n_eMediaType == AVMediaType::AVMEDIA_TYPE_UNKNOWN) &&
 			IsCompriseMedia(m_nMediaMask, AVMediaType::AVMEDIA_TYPE_AUDIO))
 		{
 			if (AudioParts.nFlag <= 0)
