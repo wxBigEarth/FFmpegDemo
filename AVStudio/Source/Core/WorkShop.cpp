@@ -447,7 +447,7 @@ namespace avstudio
 
 		if ((n_eMediaType == AVMediaType::AVMEDIA_TYPE_VIDEO ||
 			n_eMediaType == AVMediaType::AVMEDIA_TYPE_UNKNOWN) && 
-			IsCompriseMedia(m_nMediaMask, n_eMediaType))
+			IsCompriseMedia(m_nMediaMask, AVMediaType::AVMEDIA_TYPE_VIDEO))
 		{
 			VideoParts.Stream = Fmt.BuildStream(n_CodecContext);
 			VideoParts.nStreamIndex = VideoParts.Stream->index;
@@ -455,7 +455,7 @@ namespace avstudio
 
 		if ((n_eMediaType == AVMediaType::AVMEDIA_TYPE_AUDIO ||
 			n_eMediaType == AVMediaType::AVMEDIA_TYPE_UNKNOWN) && 
-			IsCompriseMedia(m_nMediaMask, n_eMediaType))
+			IsCompriseMedia(m_nMediaMask, AVMediaType::AVMEDIA_TYPE_AUDIO))
 		{
 			AudioParts.Stream = Fmt.BuildStream(n_CodecContext);
 			AudioParts.nStreamIndex = AudioParts.Stream->index;
