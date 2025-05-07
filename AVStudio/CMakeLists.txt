@@ -62,8 +62,8 @@ include_directories(Include)
 #include_directories(Include/Filter)
 #include_directories(Include/IO)
 
-#add_library(AVStudio SHARED ${Src})
-add_library(AVStudio SHARED 
+#add_library(${PROJECT_NAME} SHARED ${Src})
+add_library(${PROJECT_NAME} SHARED 
 	${MainSource}
 	${UtilSource}
 	${ApiSource}
@@ -74,13 +74,13 @@ add_library(AVStudio SHARED
 )
 
 target_include_directories(
-	AVStudio
+	${PROJECT_NAME}
 	PUBLIC ${PROJECT_SOURCE_DIR}/../3rd/FFmpeg/include
 	PUBLIC ${PROJECT_SOURCE_DIR}/../3rd/SDL/include
 )
 
 target_link_libraries(
-	AVStudio
+	${PROJECT_NAME}
 	PUBLIC ${PROJECT_SOURCE_DIR}/../3rd/FFmpeg/lib/avcodec.lib
 	PUBLIC ${PROJECT_SOURCE_DIR}/../3rd/FFmpeg/lib/avdevice.lib
 	PUBLIC ${PROJECT_SOURCE_DIR}/../3rd/FFmpeg/lib/avfilter.lib
@@ -95,3 +95,40 @@ target_link_libraries(
 #file(GLOB FFmpegDll ${PROJECT_SOURCE_DIR}/FFmpeg/bin/*.dll)
 #file(COPY ${FFmpegDll} DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG})
 #file(COPY ${FFmpegDll} DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE})
+
+IF (CMAKE_SYSTEM_NAME MATCHES "Windows")
+
+	# 添加自定义命令
+	add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+
+		COMMAND ${CMAKE_COMMAND} -E copy 
+			${RUNTIME_OUTPUT_DIRECTORY}/${PROJECT_NAME}.dll
+			${INSTALL_SHARED}/${CMAKE_BUILD_TYPE}
+
+		COMMAND ${CMAKE_COMMAND} -E copy_directory
+			${ARCHIVE_OUTPUT_DIRECTORY}/${PROJECT_NAME}.lib
+			${INSTALL_LIB}/${CMAKE_BUILD_TYPE}
+
+		COMMAND ${CMAKE_COMMAND} -E copy_directory
+			${ARCHIVE_OUTPUT_DIRECTORY}/${PROJECT_NAME}.exp
+			${INSTALL_LIB}/${CMAKE_BUILD_TYPE}
+		
+		COMMAND ${CMAKE_COMMAND} -E copy_directory
+			${CMAKE_CURRENT_LIST_DIR}/Include/
+			${INSTALL_ROOT}/include
+
+		COMMENT "Copying library and headers to output directory"
+	)
+
+IF (CMAKE_BUILD_TYPE MATCHES "Debug")
+
+	# 添加自定义命令
+	add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+
+		COMMAND ${CMAKE_COMMAND} -E copy 
+			${RUNTIME_OUTPUT_DIRECTORY}/${PROJECT_NAME}.pdb
+			${INSTALL_SHARED}/${CMAKE_BUILD_TYPE}
+	)
+endif()
+
+endif()
