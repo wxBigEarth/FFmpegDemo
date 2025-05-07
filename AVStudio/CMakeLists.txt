@@ -75,21 +75,21 @@ add_library(AVStudio SHARED
 
 target_include_directories(
 	AVStudio
-	PUBLIC ${PROJECT_SOURCE_DIR}/../FFmpeg
-	PUBLIC ${PROJECT_SOURCE_DIR}/../SDL
+	PUBLIC ${PROJECT_SOURCE_DIR}/../3rd/FFmpeg/include
+	PUBLIC ${PROJECT_SOURCE_DIR}/../3rd/SDL/include
 )
 
 target_link_libraries(
 	AVStudio
-	PUBLIC ${PROJECT_SOURCE_DIR}/../FFmpeg/lib/avcodec.lib
-	PUBLIC ${PROJECT_SOURCE_DIR}/../FFmpeg/lib/avdevice.lib
-	PUBLIC ${PROJECT_SOURCE_DIR}/../FFmpeg/lib/avfilter.lib
-	PUBLIC ${PROJECT_SOURCE_DIR}/../FFmpeg/lib/avformat.lib
-	PUBLIC ${PROJECT_SOURCE_DIR}/../FFmpeg/lib/avutil.lib
-	PUBLIC ${PROJECT_SOURCE_DIR}/../FFmpeg/lib/postproc.lib
-	PUBLIC ${PROJECT_SOURCE_DIR}/../FFmpeg/lib/swresample.lib
-	PUBLIC ${PROJECT_SOURCE_DIR}/../FFmpeg/lib/swscale.lib
-	PUBLIC ${PROJECT_SOURCE_DIR}/../SDL/lib/SDL2.lib
+	PUBLIC ${PROJECT_SOURCE_DIR}/../3rd/FFmpeg/lib/avcodec.lib
+	PUBLIC ${PROJECT_SOURCE_DIR}/../3rd/FFmpeg/lib/avdevice.lib
+	PUBLIC ${PROJECT_SOURCE_DIR}/../3rd/FFmpeg/lib/avfilter.lib
+	PUBLIC ${PROJECT_SOURCE_DIR}/../3rd/FFmpeg/lib/avformat.lib
+	PUBLIC ${PROJECT_SOURCE_DIR}/../3rd/FFmpeg/lib/avutil.lib
+	PUBLIC ${PROJECT_SOURCE_DIR}/../3rd/FFmpeg/lib/postproc.lib
+	PUBLIC ${PROJECT_SOURCE_DIR}/../3rd/FFmpeg/lib/swresample.lib
+	PUBLIC ${PROJECT_SOURCE_DIR}/../3rd/FFmpeg/lib/swscale.lib
+	PUBLIC ${PROJECT_SOURCE_DIR}/../3rd/SDL/lib/SDL2.lib
 )
 
 #file(GLOB FFmpegDll ${PROJECT_SOURCE_DIR}/FFmpeg/bin/*.dll)

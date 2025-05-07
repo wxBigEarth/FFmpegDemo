@@ -126,10 +126,11 @@ namespace avstudio
 
 		/*
 		* Setup middle ware
-		* It will be called when AVStudio create codec automatic,
+		* It will be called before start,
 		* at this time, caller can modify the parameters of codec context
 		*/ 
-		void SetupMiddleware(std::function<void(AVCodecContext*)> n_func);
+		void SetupMiddleware(AVMediaType n_eMediaType,
+			std::function<void(AVCodecContext*)> n_func);
 
 		FFormatContext Fmt;
 
@@ -174,8 +175,13 @@ namespace avstudio
 		// Indicate which fragment is in use
 		size_t							m_nFragmentIndex = 0;
 
-		std::function<void(AVCodecContext*)> m_funcMiddleware = nullptr;
+		// Video
+		std::function<void(AVCodecContext*)> m_funcMiddlewareVideo = nullptr;
+
+		// Audio
+		std::function<void(AVCodecContext*)> m_funcMiddlewareAudio = nullptr;
 	};
 }
 
 #endif // !__WORKSHOP_H__
+

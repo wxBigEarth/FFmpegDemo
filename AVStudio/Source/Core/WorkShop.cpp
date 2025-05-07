@@ -257,16 +257,16 @@ namespace avstudio
 			}
 			
 			// if ctx->framerate.num too large, first frame will be gray
-			if (ctx->framerate.num > 60)
-				ctx->framerate = AVRational{ 25, 1 };
+			if (Result->Context->framerate.num > 60)
+				Result->Context->framerate = AVRational{ 25, 1 };
 
 			// enable show Thumbnail
 			if (IsValid() &&
 				Fmt.Context->oformat &&
 				(Fmt.Context->oformat->flags & AVFMT_GLOBALHEADER))
-				ctx->flags = AV_CODEC_FLAG_GLOBAL_HEADER;
+				Result->Context->flags = AV_CODEC_FLAG_GLOBAL_HEADER;
 
-			if (m_funcMiddleware) m_funcMiddleware(Result->Context);
+			if (m_funcMiddlewareVideo) m_funcMiddlewareVideo(Result->Context);
 			VideoParts.Codec->ConfigureHwAccel();
 		}
 		else if (n_Stream->codecpar->codec_type == AVMediaType::AVMEDIA_TYPE_AUDIO)
@@ -279,7 +279,7 @@ namespace avstudio
 				Result = AudioParts.Codec;
 			}
 
-			if (m_funcMiddleware) m_funcMiddleware(Result->Context);
+			if (m_funcMiddlewareAudio) m_funcMiddlewareAudio(Result->Context);
 		}
 
 		return Result;
@@ -323,8 +323,8 @@ namespace avstudio
 				}
 			}
 
-			if (m_funcMiddleware) m_funcMiddleware(Result->Context);
-			CodecContextAddition(ctx);
+			if (m_funcMiddlewareAudio) m_funcMiddlewareAudio(Result->Context);
+			CodecContextAddition(Result->Context);
 		}
 		else if (Codec->type == AVMediaType::AVMEDIA_TYPE_VIDEO)
 		{
@@ -350,18 +350,18 @@ namespace avstudio
 			}
 
 			// if ctx->framerate.num too large, first frame will be gray
-			if (ctx->framerate.num > 60)
-				ctx->framerate = AVRational{ 25, 1 };
+			if (Result->Context->framerate.num > 60)
+				Result->Context->framerate = AVRational{ 25, 1 };
 
 			// enable show Thumbnail
 			if (IsValid() && 
 				Fmt.Context->oformat &&
 				(Fmt.Context->oformat->flags & AVFMT_GLOBALHEADER))
-				ctx->flags = AV_CODEC_FLAG_GLOBAL_HEADER;
+				Result->Context->flags = AV_CODEC_FLAG_GLOBAL_HEADER;
 
-			if (m_funcMiddleware) m_funcMiddleware(Result->Context);
+			if (m_funcMiddlewareVideo) m_funcMiddlewareVideo(Result->Context);
 
-			CodecContextAddition(ctx);
+			CodecContextAddition(Result->Context);
 			VideoParts.Codec->ConfigureHwAccel();
 		}
 
@@ -686,10 +686,14 @@ namespace avstudio
 		return nResult;
 	}
 
-	void FWorkShop::SetupMiddleware(
+	void FWorkShop::SetupMiddleware(AVMediaType n_eMediaType,
 		std::function<void(AVCodecContext*)> n_func)
 	{
-		m_funcMiddleware = n_func;
+		if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_VIDEO)
+			m_funcMiddlewareVideo = n_func;
+		else if (n_eMediaType == AVMediaType::AVMEDIA_TYPE_AUDIO)
+			m_funcMiddlewareAudio = n_func;
 	}
 
 }
+

@@ -34,18 +34,15 @@ static void Cover()
 		auto Input = Editor.OpenInputFile("../../videos/1.avi");
 		auto Output = Editor.AllocOutputFile("../../videos/1-1.mp4");
 #endif
-// 		Output->SetupMiddleware(
+// 		Output->SetupMiddleware(AVMediaType::AVMEDIA_TYPE_VIDEO,
 // 			[Input, Output](AVCodecContext* Ctx) {
 // 
-// 				if (Ctx->codec_type == AVMediaType::AVMEDIA_TYPE_VIDEO)
-// 				{
-// 					// rotate the video 
-// 					auto Filter = std::make_shared<CCombineFilter>();
-// 					Filter->Init(Output->VideoParts.Codec);
-// 					Filter->AppendFilter("rotate", "a=PI/4", true);
-// 
-// 					Input->VideoParts.Filter = Filter;
-// 				}
+// 				// rotate the video 
+// 				auto Filter = std::make_shared<CCombineFilter>();
+// 				Filter->Init(Output->VideoParts.Codec);
+// 				Filter->AppendFilter("rotate", "a=PI/4", true);
+//
+//				Input->VideoParts.Filter = Filter;
 // 			}
 // 		);
 
@@ -65,7 +62,7 @@ static void Cover()
 		// In the middle ware, caller can modify the default parameters of 
 		// codec context
 		//
-		// Output->SetupMiddleware(
+		// Output->SetupMiddleware(AVMediaType::AVMEDIA_TYPE_VIDEO,
 		//	[](AVCodecContext* n_Codec) {
 		//
 		//		n_Codec->framerate = { 30, 1 };
