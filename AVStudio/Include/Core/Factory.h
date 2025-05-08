@@ -41,7 +41,8 @@ namespace avstudio
 		void Release();
 
 	protected:
-		int Demuxing(AVPacket* n_Packet);
+		int ReadPacket(AVPacket* n_Packet);
+		int Demuxing(AVPacket* n_Packet, AVMediaType n_eMediaType);
 		int Decoding(AVPacket* n_Packet, AVMediaType n_eMediaType);
 		int Converting(AVFrame* n_Frame, AVMediaType n_eMediaType);
 		int Filtering(AVFrame* n_Frame, AVMediaType n_eMediaType);

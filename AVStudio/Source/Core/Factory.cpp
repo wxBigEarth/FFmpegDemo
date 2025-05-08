@@ -50,7 +50,7 @@ namespace avstudio
 		}
 		if (!m_Packet) m_Packet = av_packet_alloc();
 
-		int ret = Demuxing(m_Packet);
+		int ret = ReadPacket(m_Packet);
 		if (ret < 0)
 		{
 			Flush();
@@ -76,53 +76,7 @@ namespace avstudio
 		//	AVDebug("Audio : %lf\n", t);
 		//}
 
-		if (m_Input->CheckMedia(eMediaType) && nOffset >= 0)
-		{
-			m_Packet->dts = nOffset + m_Packet->dts - m_Packet->pts;
-			m_Packet->pts = nOffset;
-
-			// For video stream, default index is 0
-			// For Audio stream, default index is 1
-			if (m_Packet->stream_index == m_Input->VideoParts.nStreamIndex)
-			{
-				m_Input->VideoParts.PacketPts += m_Packet->duration;
-				m_Packet->stream_index = 0;
-				m_Packet->time_base = m_Input->VideoParts.Stream->time_base;
-
-				if (m_Input->VideoParts.nFlag == 0 && m_Output->IsValid()
-					&& av_cmp_q(m_Input->VideoParts.Stream->time_base,
-						m_Output->VideoParts.Stream->time_base) != 0)
-				{
-					// If no need to decode, and output context is valid, change timebase
-					av_packet_rescale_ts(m_Packet,
-						m_Input->VideoParts.Stream->time_base,
-						m_Output->VideoParts.Stream->time_base);
-
-					m_Packet->time_base = m_Output->VideoParts.Stream->time_base;
-				}
-			}
-			else if (m_Packet->stream_index == m_Input->AudioParts.nStreamIndex)
-			{
-				m_Input->AudioParts.PacketPts += m_Packet->duration;
-				// If no video stream, audio stream index is 0
-				m_Packet->stream_index = m_Input->VideoParts.nStreamIndex < 0 ? 0 : 1;
-				m_Packet->time_base = m_Input->AudioParts.Stream->time_base;
-
-				if (m_Input->AudioParts.nFlag == 0 && m_Output->IsValid()
-					&& av_cmp_q(m_Input->AudioParts.Stream->time_base,
-						m_Output->AudioParts.Stream->time_base) != 0)
-				{
-					// If no need to decode, and output context is valid, change timebase
-					av_packet_rescale_ts(m_Packet,
-						m_Input->AudioParts.Stream->time_base,
-						m_Output->AudioParts.Stream->time_base);
-
-					m_Packet->time_base = m_Output->AudioParts.Stream->time_base;
-				}
-			}
-
-			ret = Decoding(m_Packet, eMediaType);
-		}
+		if (nOffset >= 0) Demuxing(m_Packet, eMediaType);
 
 		av_packet_unref(m_Packet);
 
@@ -187,9 +141,55 @@ namespace avstudio
 		if (m_aFrame) av_frame_free(&m_aFrame);
 	}
 
-	int CFactory::Demuxing(AVPacket* n_Packet)
+	int CFactory::ReadPacket(AVPacket* n_Packet)
 	{
 		return m_Input->Fmt.ReadPacket(n_Packet);
+	}
+
+	int CFactory::Demuxing(AVPacket* n_Packet, AVMediaType n_eMediaType)
+	{
+		if (!m_Input->CheckMedia(n_eMediaType)) return 0;
+
+		FLatheParts* oLatheParts = nullptr;
+		FLatheParts* iLatheParts = nullptr;
+
+		// For video stream, default index is 0
+		// For Audio stream, default index is 1
+		if (n_Packet->stream_index == m_Input->VideoParts.nStreamIndex)
+		{
+			oLatheParts = &m_Output->VideoParts;
+			iLatheParts = &m_Input->VideoParts;
+
+			n_Packet->stream_index = 0;
+			n_Packet->time_base = iLatheParts->Stream->time_base;
+		}
+		else if (n_Packet->stream_index == m_Input->AudioParts.nStreamIndex)
+		{
+			oLatheParts = &m_Output->AudioParts;
+			iLatheParts = &m_Input->AudioParts;
+
+			// If no video stream, audio stream index is 0
+			n_Packet->stream_index = iLatheParts->nStreamIndex < 0 ? 0 : 1;
+			n_Packet->time_base = iLatheParts->Stream->time_base;
+		}
+
+		n_Packet->dts = iLatheParts->PacketPts + n_Packet->pts - n_Packet->dts;
+		n_Packet->pts = iLatheParts->PacketPts;
+		iLatheParts->PacketPts += n_Packet->duration;
+
+		if (iLatheParts->nFlag == 0 && m_Output->IsValid()
+			&& av_cmp_q(iLatheParts->Stream->time_base,
+				oLatheParts->Stream->time_base) != 0)
+		{
+			// If no need to decode, and output context is valid, change timebase
+			av_packet_rescale_ts(n_Packet,
+				iLatheParts->Stream->time_base,
+				oLatheParts->Stream->time_base);
+
+			n_Packet->time_base = oLatheParts->Stream->time_base;
+		}
+
+		return Decoding(n_Packet, n_eMediaType);
 	}
 
 	int CFactory::Decoding(AVPacket* n_Packet, AVMediaType n_eMediaType)

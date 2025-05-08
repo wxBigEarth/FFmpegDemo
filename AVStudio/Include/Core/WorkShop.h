@@ -113,6 +113,7 @@ namespace avstudio
 		int64_t GetLastPts(AVMediaType n_eMediaType) const;
 
 		// Select fragment (in second) for input context, used for file splitting
+		// Note: There is an error between the actual time and the input time
 		void PickupFragment(const double n_dStart, const double n_dLength);
 
 		/*
@@ -123,6 +124,9 @@ namespace avstudio
 		*	AVERROR_EOF: end
 		*/
 		int64_t TryPickup(int64_t n_nPts, AVMediaType n_eMediaType);
+
+		// The length that has been output
+		const double OutputLength();
 
 		/*
 		* Setup middle ware

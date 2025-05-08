@@ -428,7 +428,7 @@ namespace avstudio
 						m_vInputCtx[n_vInputs[i + 1]]->Input()->AudioParts.FiFo);
 				}
 
-				AddLastPts(Factory->Input()->Fmt.Length());
+				AddLastPts(Factory->Input()->OutputLength());
 			}
 
 			Factory->Release();
@@ -479,8 +479,8 @@ namespace avstudio
 
 			if (!IsStop())
 			{
-				if (dLength < Factory->Input()->Fmt.Length())
-					dLength = Factory->Input()->Fmt.Length();
+				auto d = Factory->Input()->OutputLength();
+				if (dLength < d) dLength = d;
 
 				Factory->WindUp();
 			}

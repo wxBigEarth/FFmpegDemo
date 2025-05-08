@@ -646,6 +646,9 @@ namespace avstudio
 		if (AudioParts.Stream)
 			Section.aTo = (int64_t)(dTo / av_q2d(AudioParts.Stream->time_base));
 
+		if (m_vFragments.size() == 0)
+			Fmt.SeekFrame(-1, (int64_t)(n_dStart * AV_TIME_BASE), AVSEEK_FLAG_FRAME);
+
 		m_vFragments.emplace_back(Section);
 	}
 
@@ -684,6 +687,20 @@ namespace avstudio
 		}
 
 		return nResult;
+	}
+
+	const double FWorkShop::OutputLength()
+	{
+		double dLengthV = 0;
+		double dLengthA = 0;
+
+		if (VideoParts.Stream)
+			dLengthV = VideoParts.PacketPts * av_q2d(VideoParts.Stream->time_base);
+
+		if (AudioParts.Stream)
+			dLengthA = AudioParts.PacketPts * av_q2d(AudioParts.Stream->time_base);
+
+		return dLengthV > dLengthA ? dLengthV : dLengthA;
 	}
 
 	void FWorkShop::SetupMiddleware(AVMediaType n_eMediaType,
