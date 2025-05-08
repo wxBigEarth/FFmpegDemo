@@ -161,7 +161,6 @@ namespace avstudio
 			iLatheParts = &m_Input->VideoParts;
 
 			n_Packet->stream_index = 0;
-			n_Packet->time_base = iLatheParts->Stream->time_base;
 		}
 		else if (n_Packet->stream_index == m_Input->AudioParts.nStreamIndex)
 		{
@@ -170,11 +169,14 @@ namespace avstudio
 
 			// If no video stream, audio stream index is 0
 			n_Packet->stream_index = iLatheParts->nStreamIndex < 0 ? 0 : 1;
-			n_Packet->time_base = iLatheParts->Stream->time_base;
 		}
 
-		n_Packet->dts = iLatheParts->PacketPts + n_Packet->pts - n_Packet->dts;
-		n_Packet->pts = iLatheParts->PacketPts;
+		if (iLatheParts->StartPts == AVERROR_EOF)
+			iLatheParts->StartPts = n_Packet->pts;
+
+		n_Packet->dts = iLatheParts->PacketPts - iLatheParts->StartPts;
+		n_Packet->pts = iLatheParts->PacketPts - iLatheParts->StartPts;
+		n_Packet->time_base = iLatheParts->Stream->time_base;
 		iLatheParts->PacketPts += n_Packet->duration;
 
 		if (iLatheParts->nFlag == 0 && m_Output->IsValid()
@@ -382,6 +384,10 @@ namespace avstudio
 
 			ret = Filter->Pop(
 				[this, n_eMediaType](AVFrame* Frame) {
+
+					if (Frame &&
+						m_Output->AudioParts.Codec->Context->frame_size < Frame->nb_samples)
+						return 0;
 					return Encoding(Frame, n_eMediaType);
 				});
 		}

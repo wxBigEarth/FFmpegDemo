@@ -29,7 +29,8 @@ namespace avstudio
 
 		// For output context only, Frame duration
 		int64_t			Duration = 1;
-
+		// Start pts oft the input context
+		int64_t 		StartPts = AVERROR_EOF;
 		// Real pts while reading the packet from input context
 		int64_t			PacketPts = 0;
 		// For input context, pts of AVFrame which decoded from AVPacket
